@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>На Крыше</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400;500&display=swap');
+
+    :root {
+      --bg: #0d0d0d;
+      --bg-card: #161616;
+      --bg-card-hover: #1e1e1e;
+      --accent: #c8a96e;
+      --accent-dim: rgba(200, 169, 110, 0.12);
+      --text: #f0ebe3;
+      --text-muted: #6b6560;
+      --text-sub: #9a9088;
+      --border: rgba(255,255,255,0.06);
+      --radius: 18px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overscroll-behavior: none;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 28px 20px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(200,169,110,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    .header-info h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.5px;
+    }
+
+    .header-info p {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 7px 14px;
+      font-size: 12px;
+      color: var(--text-sub);
+      letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 6px #4ade80;
+      flex-shrink: 0;
+    }
+
+    .status-dot.closed { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+    .status-time {
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+
+    /* ── NAV TABS ── */
+    .nav {
+      display: flex;
+      gap: 0;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 14px 8px;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .nav-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── SCREENS ── */
+    .screen { display: none; padding: 20px; }
+    .screen.active { display: block; }
+
+    /* ── GRID ── */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .grid-1 { margin-bottom: 12px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      text-decoration: none;
+      display: block;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:active { transform: scale(0.97); background: var(--bg-card-hover); }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+
+    .card h3 {
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+
+    .card p {
+      font-size: 10px;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .card-arrow {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 10px;
+    }
+
+    .card.accent-card {
+      background: var(--accent-dim);
+      border-color: rgba(200,169,110,0.2);
+    }
+
+    .card.accent-card .card-icon { background: rgba(200,169,110,0.15); }
+
+    /* ── SECTION TITLES ── */
+    .section-title {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      margin-top: 8px;
+    }
+
+    /* ── EVENTS ── */
+    .event-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .event-date {
+      text-align: center;
+      min-width: 44px;
+    }
+
+    .event-date .day {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .event-date .month {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .event-divider {
+      width: 1px;
+      height: 36px;
+      background: var(--border);
+    }
+
+    .event-info h4 {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .event-info p {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .event-tag {
+      margin-left: auto;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid rgba(200,169,110,0.2);
+      border-radius: 100px;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      padding: 30px 20px 20px;
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      line-height: 2;
+    }
+
+    /* ── CONTACT SCREEN ── */
+    .contact-option {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+
+    .contact-option:active { background: var(--bg-card-hover); }
+
+    .contact-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 13px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .contact-text h4 {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .contact-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .contact-chevron {
+      margin-left: auto;
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+
+    /* ── FAQ ── */
+    .faq-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .faq-question {
+      padding: 16px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .faq-chevron {
+      color: var(--text-muted);
+      font-size: 16px;
+      flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+
+    .faq-answer {
+      display: none;
+      padding: 0 18px 16px;
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.6;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+
+    .faq-item.open .faq-answer { display: block; }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+
+    /* ── ABOUT ── */
+    .about-hero {
+      background: var(--accent-dim);
+      border: 1px solid rgba(200,169,110,0.15);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .about-hero h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      font-weight: 300;
+      color: var(--accent);
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .about-hero p {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.6;
+    }
+
+    .info-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .info-row-icon { font-size: 18px; flex-shrink: 0; }
+
+    .info-row-text h4 {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .info-row-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ── MENU PLACEHOLDER ── */
+    .menu-soon {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .menu-soon .big-icon { font-size: 48px; margin-bottom: 16px; }
+
+    .menu-soon h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 24px;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .menu-soon p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ── LOADING ── */
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── NO EVENTS ── */
+    .no-events {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="logo" style="padding:0;overflow:hidden;background:#1e0f0f;"><img src="data:image/jpeg;base64,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" style="width:100%;height:100%;object-fit:cover;border-radius:14px;"></div>
+    <div class="header-info">
+      <h1>На Крыше</h1>
+      <p>Владикавказ · Весенняя 19в</p>
+    </div>
+  </div>
+  <div class="status-badge" id="statusBadge">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Сейчас открыто</span>
+    <span class="status-time">· 13:00 – 00:00</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-tab active" onclick="showScreen('home')">Главная</button>
+  <button class="nav-tab" onclick="showScreen('events')">Афиша</button>
+  <button class="nav-tab" onclick="showScreen('about')">О нас</button>
+  <button class="nav-tab" onclick="showScreen('faq')">FAQ</button>
+</div>
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+  <div style="height: 8px;"></div>
+
+  <div class="grid-2">
+    <div class="card accent-card" onclick="openBook()">
+      <div class="card-icon">📅</div>
+      <h3>Забронировать</h3>
+      <p>Стол</p>
+    </div>
+    <div class="card" onclick="showScreen('events')">
+      <div class="card-icon">🎭</div>
+      <h3>Афиша</h3>
+      <p>Мероприятия</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" onclick="showScreen('about'); scrollTo(0,0)">
+      <div class="card-icon">✨</div>
+      <h3>О заведении</h3>
+      <p>Концепция</p>
+    </div>
+    <div class="card" onclick="showScreen('faq')">
+      <div class="card-icon">❓</div>
+      <h3>FAQ</h3>
+      <p>Вопросы</p>
+    </div>
+  </div>
+
+  <div class="grid-1">
+    <div class="card" onclick="openAdmin()">
+      <div class="card-icon">💬</div>
+      <h3>Написать управляющему</h3>
+      <p>Есть что сказать</p>
+    </div>
+  </div>
+
+  <div class="section-title">Ближайшее мероприятие</div>
+  <div id="homeEvent">
+    <div class="loading"><div class="spinner"></div>Загружаю...</div>
+  </div>
+
+  <div class="footer">
+    На Крыше · Владикавказ<br>
+    Ул. Весенняя 19в
+  </div>
+</div>
+
+<!-- EVENTS -->
+<div class="screen" id="screen-events">
+  <div style="height: 8px;"></div>
+  <div class="section-title">Афиша мероприятий</div>
+  <div id="eventsList">
+    <div class="loading"><div class="spinner"></div>Загружаю...</div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<div class="screen" id="screen-about">
+  <div style="height: 8px;"></div>
+  <div class="about-hero">
+    <h2>На Крыше</h2>
+    <p>Лаундж-бар с особой атмосферой<br>в самом сердце Владикавказа</p>
+  </div>
+
+  <div class="section-title">Информация</div>
+
+  <div class="info-row">
+    <div class="info-row-icon">📍</div>
+    <div class="info-row-text">
+      <h4>Адрес</h4>
+      <p>Владикавказ, ул. Весенняя 19в</p>
+    </div>
+  </div>
+
+  <div class="info-row">
+    <div class="info-row-icon">🕐</div>
+    <div class="info-row-text">
+      <h4>Часы работы</h4>
+      <p>Ежедневно · 13:00 – 00:00</p>
+    </div>
+  </div>
+
+  <div class="info-row" onclick="openMap()" style="cursor:pointer">
+    <div class="info-row-icon">🗺</div>
+    <div class="info-row-text">
+      <h4>Как добраться</h4>
+      <p>Открыть на карте →</p>
+    </div>
+  </div>
+
+  <div class="info-row" onclick="openAdmin()" style="cursor:pointer">
+    <div class="info-row-icon">💬</div>
+    <div class="info-row-text">
+      <h4>Написать управляющему</h4>
+      <p>Связаться напрямую →</p>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="screen" id="screen-faq">
+  <div style="height: 8px;"></div>
+  <div class="section-title">Часто задаваемые вопросы</div>
+
+  <div class="faq-item">
+    <div class="faq-question" onclick="toggleFaq(this)">
+      Как забронировать стол?
+      <span class="faq-chevron">›</span>
+    </div>
+    <div class="faq-answer">Нажмите кнопку "Забронировать" на главной странице — вы перейдёте в диалог с управляющим, который подтвердит бронь.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-question" onclick="toggleFaq(this)">
+      Есть ли дресс-код?
+      <span class="faq-chevron">›</span>
+    </div>
+    <div class="faq-answer">Строгого дресс-кода нет, но мы ценим опрятный внешний вид. Приходите в том, в чём вам комфортно.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-question" onclick="toggleFaq(this)">
+      Можно ли прийти без брони?
+      <span class="faq-chevron">›</span>
+    </div>
+    <div class="faq-answer">Да, мы принимаем гостей без предварительной брони. Однако в пятницу и субботу вечером рекомендуем забронировать стол заранее.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-question" onclick="toggleFaq(this)">
+      Есть ли парковка?
+      <span class="faq-chevron">›</span>
+    </div>
+    <div class="faq-answer">Да, рядом с заведением есть парковочные места. Уточнить детали можно у управляющего.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-question" onclick="toggleFaq(this)">
+      Проводите ли вы мероприятия?
+      <span class="faq-chevron">›</span>
+    </div>
+    <div class="faq-answer">Да! Следите за афишей в разделе "Мероприятия". Там всегда актуальное расписание событий.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-question" onclick="toggleFaq(this)">
+      Как связаться с заведением?
+      <span class="faq-chevron">›</span>
+    </div>
+    <div class="faq-answer">Напишите управляющему напрямую через кнопку на главной странице. Отвечаем быстро!</div>
+  </div>
+</div>
+
+<script>
+  // Telegram WebApp init
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#0d0d0d');
+    tg.setBackgroundColor('#0d0d0d');
+  }
+
+  // Admin username — замени на свой
+  const ADMIN_USERNAME = 'zermatttt';
+  const NOTION_EVENTS_DB_ID = '35173a71663680999ebcf882ecea022d';
+
+  // Status check
+  function checkStatus() {
+    const now = new Date();
+    const hours = now.getHours();
+    const isOpen = hours >= 13 || hours < 0;
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (!isOpen) {
+      dot.classList.add('closed');
+      text.textContent = 'Сейчас закрыто';
+    }
+  }
+
+  // Navigation
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    const tabs = ['home', 'events', 'about', 'faq'];
+    const idx = tabs.indexOf(name);
+    if (idx >= 0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+    window.scrollTo(0, 0);
+
+    if (name === 'events') loadEvents();
+  }
+
+  // Book table
+  function openBook() {
+    if (tg) {
+      tg.openTelegramLink('https://t.me/' + ADMIN_USERNAME);
+    } else {
+      window.open('https://t.me/' + ADMIN_USERNAME, '_blank');
+    }
+  }
+
+  // Write to admin
+  function openAdmin() {
+    if (tg) {
+      tg.openTelegramLink('https://t.me/' + ADMIN_USERNAME);
+    } else {
+      window.open('https://t.me/' + ADMIN_USERNAME, '_blank');
+    }
+  }
+
+  // Open map
+  function openMap() {
+    const url = 'https://maps.google.com/?q=Владикавказ+Весенняя+19в';
+    if (tg) {
+      tg.openLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
+  // FAQ toggle
+  function toggleFaq(el) {
+    const item = el.parentElement;
+    item.classList.toggle('open');
+  }
+
+  // Format date
+  function formatDate(dateStr) {
+    const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const d = new Date(dateStr);
+    return {
+      day: d.getDate(),
+      month: months[d.getMonth()]
+    };
+  }
+
+  // Load events from Notion via public API
+  async function loadEvents() {
+    const container = document.getElementById('eventsList');
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`https://api.notion.com/v1/databases/${NOTION_EVENTS_DB_ID}/query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28',
+          'Authorization': 'Bearer NOTION_TOKEN_PLACEHOLDER'
+        },
+        body: JSON.stringify({
+          filter: { property: 'Дата', date: { on_or_after: today } },
+          sorts: [{ property: 'Дата', direction: 'ascending' }]
+        })
+      });
+
+      const data = await res.json();
+      const events = data.results || [];
+      renderEvents(events, container);
+
+      // Also update home screen
+      if (events.length > 0) {
+        renderHomeEvent(events[0]);
+      } else {
+        document.getElementById('homeEvent').innerHTML = '<div class="no-events" style="padding:20px 0;text-align:left;font-size:13px;color:var(--text-muted);">Ближайших мероприятий нет</div>';
+      }
+
+    } catch (e) {
+      container.innerHTML = '<div class="no-events">Не удалось загрузить афишу</div>';
+      document.getElementById('homeEvent').innerHTML = '';
+    }
+  }
+
+  function renderEvents(events, container) {
+    if (!events.length) {
+      container.innerHTML = '<div class="no-events">Ближайших мероприятий пока нет<br><br>Следите за обновлениями 🎭</div>';
+      return;
+    }
+
+    container.innerHTML = events.map(e => {
+      const props = e.properties;
+      const name = props['Название']?.title?.[0]?.plain_text || '—';
+      const fmt = props['Формат']?.select?.name || '';
+      const dateStr = props['Дата']?.date?.start || '';
+      const { day, month } = dateStr ? formatDate(dateStr) : { day: '—', month: '' };
+
+      return `
+        <div class="event-item">
+          <div class="event-date">
+            <div class="day">${day}</div>
+            <div class="month">${month}</div>
+          </div>
+          <div class="event-divider"></div>
+          <div class="event-info">
+            <h4>${name}</h4>
+            <p>${fmt}</p>
+          </div>
+          ${fmt ? `<span class="event-tag">${fmt}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderHomeEvent(e) {
+    const props = e.properties;
+    const name = props['Название']?.title?.[0]?.plain_text || '—';
+    const fmt = props['Формат']?.select?.name || '';
+    const dateStr = props['Дата']?.date?.start || '';
+    const { day, month } = dateStr ? formatDate(dateStr) : { day: '—', month: '' };
+
+    document.getElementById('homeEvent').innerHTML = `
+      <div class="event-item" onclick="showScreen('events')" style="cursor:pointer">
+        <div class="event-date">
+          <div class="day">${day}</div>
+          <div class="month">${month}</div>
+        </div>
+        <div class="event-divider"></div>
+        <div class="event-info">
+          <h4>${name}</h4>
+          <p>${fmt}</p>
+        </div>
+        ${fmt ? `<span class="event-tag">${fmt}</span>` : ''}
+      </div>
+    `;
+  }
+
+  // Init
+  checkStatus();
+  loadEvents();
+</script>
+</body>
+</html>
