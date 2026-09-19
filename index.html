@@ -1190,10 +1190,34 @@
     input.setSelectionRange(newPos, newPos);
   }
 
+  // Локальная дата в формате YYYY-MM-DD — не toISOString (тот берёт UTC и в первые
+  // часы после полуночи по местному времени ещё показывает "вчера").
+  function localDateStr(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
   // Set today as min date for booking
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateStr();
   document.getElementById('bDate').value = today;
   document.getElementById('bDate').min = today;
+
+  // Если выбрана сегодняшняя дата — подсказываем браузеру не показывать прошедшее время
+  // (это только UX-подсказка, окончательная проверка всё равно в sendBooking)
+  function updateTimeMin() {
+    const dateField = document.getElementById('bDate');
+    const timeField = document.getElementById('bTime');
+    if (dateField.value === localDateStr()) {
+      const now = new Date();
+      timeField.min = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    } else {
+      timeField.removeAttribute('min');
+    }
+  }
+  document.getElementById('bDate').addEventListener('change', updateTimeMin);
+  updateTimeMin();
 
   // Status
   function checkStatus() {
@@ -1242,10 +1266,11 @@
     // в форме молча остаётся его дата вместо сегодняшней
     const dateField = document.getElementById('bDate');
     const timeField = document.getElementById('bTime');
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateStr();
     dateField.value = today;
     dateField.min = today;
     timeField.value = '20:00';
+    updateTimeMin();
     showScreen('book');
     prefillBookingForm();
   }
@@ -1312,7 +1337,7 @@
 
     // Атрибут min на поле — это только подсказка браузеру, её можно обойти
     // (ручной ввод, некоторые версии Android/iOS). Проверяем дату явно.
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = localDateStr();
     if (date < todayStr) {
       alert('Нельзя забронировать прошедшую дату — пожалуйста, выберите сегодня или позже');
       document.getElementById('bDate').focus();
@@ -1323,6 +1348,20 @@
       alert('Пожалуйста, укажите время брони');
       document.getElementById('bTime').focus();
       return;
+    }
+
+    // Дата — сегодня, но выбранное время уже прошло (браузер не мешает выбрать
+    // в <input type="time"> любой час, даже задним числом на текущий день).
+    if (date === todayStr) {
+      const now = new Date();
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const [th, tm] = time.split(':').map(Number);
+      const selectedMinutes = th * 60 + tm;
+      if (selectedMinutes <= nowMinutes) {
+        alert('Это время уже прошло — пожалуйста, выберите время позже текущего');
+        document.getElementById('bTime').focus();
+        return;
+      }
     }
 
     const room = bookingContext && bookingContext.type === 'vip' ? bookingContext.room : null;
