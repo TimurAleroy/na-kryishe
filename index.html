@@ -222,12 +222,48 @@
     .menu-box:last-child { margin-bottom: 0; }
     .menu-box-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); padding: 15px 0 9px; }
     .menu-box-note { font-size: 10px; letter-spacing: 0.4px; text-transform: none; color: var(--text-muted); font-family: 'Inter', sans-serif; white-space: nowrap; }
-    .menu-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .menu-item { padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
     .menu-item:last-child { border-bottom: none; padding-bottom: 15px; }
-    .menu-item-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .menu-item:active { opacity: 0.7; }
+    .menu-item-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
     .menu-item-name { font-family: 'Jost', sans-serif; font-size: 15px; color: var(--text); font-weight: 300; }
-    .menu-item-price { font-size: 13px; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+    .menu-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .menu-item-price { font-size: 13px; color: var(--accent); white-space: nowrap; }
+    .menu-item-chevron { color: var(--text-muted); flex-shrink: 0; }
     .menu-item-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
+
+    /* MENU ITEM DETAIL — полноэкранный "погружённый" вид блюда, тот же язык, что у VIP/Бар сторис */
+    .menu-detail {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg);
+      z-index: 500;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .menu-detail.show { display: flex; }
+    .menu-detail-photo {
+      width: 100%;
+      aspect-ratio: 4/5;
+      max-height: 52vh;
+      flex-shrink: 0;
+      background-size: cover;
+      background-position: center;
+      background-color: var(--bg-card);
+      position: relative;
+    }
+    .menu-detail-photo::after {
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+      background: linear-gradient(to top, var(--bg), transparent);
+    }
+    .menu-detail-photo.no-photo { display: flex; align-items: center; justify-content: center; }
+    .menu-detail-body { padding: 20px 20px 40px; margin-top: -20px; position: relative; z-index: 2; }
+    .menu-detail-category { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .menu-detail-name { font-family: 'Jost', sans-serif; font-size: 24px; font-weight: 400; color: var(--text); line-height: 1.25; margin-bottom: 10px; }
+    .menu-detail-price { font-size: 17px; color: var(--accent); margin-bottom: 18px; }
+    .menu-detail-desc { font-size: 14px; line-height: 1.65; color: var(--text-sub); }
 
     /* EVENTS */
     .event-item {
@@ -724,6 +760,18 @@
   <div style="margin-top:14px"></div>
   <div class="menu-tabs" id="menuTabs"></div>
   <div id="menuContent" style="padding:0 4px"><div class="no-data">Загружаю меню...</div></div>
+</div>
+
+<!-- MENU ITEM DETAIL -->
+<div class="menu-detail" id="menuDetailOverlay">
+  <button class="stories-close" onclick="closeMenuDetail()">✕</button>
+  <div class="menu-detail-photo" id="menuDetailPhoto"></div>
+  <div class="menu-detail-body">
+    <div class="menu-detail-category" id="menuDetailCategory"></div>
+    <div class="menu-detail-name" id="menuDetailName"></div>
+    <div class="menu-detail-price" id="menuDetailPrice"></div>
+    <div class="menu-detail-desc" id="menuDetailDesc"></div>
+  </div>
 </div>
 
 <!-- BAR -->
@@ -1554,6 +1602,8 @@
   // Events
   const MONTHS = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 
+  let currentMenuItems = []; // плоский список последней загрузки — чтобы открывать деталь блюда по id без повторного похода на сервер
+
   async function loadMenu() {
     const el = document.getElementById('menuContent');
     const tabsEl = document.getElementById('menuTabs');
@@ -1561,6 +1611,7 @@
       const res = await fetch(`${PROXY_BASE}/api/menu`);
       if (!res.ok) throw new Error();
       const items = await res.json();
+      currentMenuItems = items;
       renderMenu(items, el, tabsEl);
     } catch {
       tabsEl.innerHTML = '';
@@ -1593,10 +1644,13 @@
     Object.keys(byCategory).forEach(c => { if (!cats.includes(c)) cats.push(c); });
 
     function renderItem(it, hidePrice) {
-      return `<div class="menu-item">
+      return `<div class="menu-item" onclick="openMenuDetail('${it.id}')">
           <div class="menu-item-row">
             <div class="menu-item-name">${menuEsc(it.name)}</div>
-            ${!hidePrice && it.price !== null ? `<div class="menu-item-price">${it.price} ₽</div>` : ''}
+            <div class="menu-item-right">
+              ${!hidePrice && it.price !== null ? `<div class="menu-item-price">${it.price} ₽</div>` : ''}
+              <svg class="menu-item-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 6 15 12 9 18"/></svg>
+            </div>
           </div>
           ${it.description ? `<div class="menu-item-desc">${menuEsc(it.description)}</div>` : ''}
         </div>`;
@@ -1640,6 +1694,41 @@
   function switchMenuTab(cat) {
     document.querySelectorAll('.menu-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
     document.querySelectorAll('.menu-category-panel').forEach(p => p.classList.toggle('active', p.dataset.cat === cat));
+  }
+
+  // Полноэкранная "деталь" блюда — фото на весь верх + название/цена/описание снизу,
+  // в той же стилистике, что у VIP/Бар сторис. Открывается по id из уже загруженного меню.
+  function openMenuDetail(id) {
+    const it = currentMenuItems.find(x => x.id === id);
+    if (!it) return;
+
+    const photoEl = document.getElementById('menuDetailPhoto');
+    if (it.photoUrl) {
+      photoEl.classList.remove('no-photo');
+      photoEl.style.backgroundImage = `url('${it.photoUrl.replace(/'/g, "\\'")}')`;
+      photoEl.innerHTML = '';
+    } else {
+      photoEl.classList.add('no-photo');
+      photoEl.style.backgroundImage = 'none';
+      photoEl.innerHTML = `<div class="story-placeholder"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(184,115,51,0.5)" stroke-width="0.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 15l-5-4-4 3.5-3-2L3 16"/></svg><span>Фото скоро</span></div>`;
+    }
+
+    const categoryLabel = MENU_CATEGORY_LABEL[it.category] || it.category;
+    document.getElementById('menuDetailCategory').textContent = [categoryLabel, it.subcategory].filter(Boolean).join(' · ');
+    document.getElementById('menuDetailName').textContent = it.name;
+    const priceEl = document.getElementById('menuDetailPrice');
+    if (it.price !== null) { priceEl.textContent = `${it.price} ₽`; priceEl.style.display = 'block'; }
+    else { priceEl.style.display = 'none'; }
+    const descEl = document.getElementById('menuDetailDesc');
+    if (it.description) { descEl.textContent = it.description; descEl.style.display = 'block'; }
+    else { descEl.style.display = 'none'; }
+
+    document.getElementById('menuDetailOverlay').scrollTop = 0;
+    document.getElementById('menuDetailOverlay').classList.add('show');
+  }
+
+  function closeMenuDetail() {
+    document.getElementById('menuDetailOverlay').classList.remove('show');
   }
 
   async function loadEvents() {
