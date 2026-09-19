@@ -1035,15 +1035,19 @@
     <div>
       <label class="form-label">Дата</label>
       <input class="form-input" id="bDate" type="date">
+      <div class="field-error" id="dateError">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+        <span id="dateErrorText"></span>
+      </div>
     </div>
     <div>
       <label class="form-label">Время</label>
       <input class="form-input" id="bTime" type="time" value="20:00">
+      <div class="field-error" id="timeError">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+        <span id="timeErrorText"></span>
+      </div>
     </div>
-  </div>
-  <div class="field-error" id="dateTimeError">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
-    <span id="dateTimeErrorText"></span>
   </div>
   <div class="form-group">
     <label class="form-label">Количество гостей</label>
@@ -1319,12 +1323,13 @@
   }
   function clearBookingErrors() {
     ['bName', 'bPhone', 'bDate', 'bTime'].forEach(id => document.getElementById(id).classList.remove('field-invalid'));
-    ['nameError', 'phoneError', 'dateTimeError'].forEach(id => document.getElementById(id).style.display = 'none');
+    ['nameError', 'phoneError', 'dateError', 'timeError'].forEach(id => document.getElementById(id).style.display = 'none');
     document.getElementById('bookAlert').style.display = 'none';
   }
   function showNameError(message) { showBookingFieldError(['bName'], 'nameError', 'nameErrorText', message); }
   function showPhoneError(message) { showBookingFieldError(['bPhone'], 'phoneError', 'phoneErrorText', message); }
-  function showDateTimeError(message) { showBookingFieldError(['bDate', 'bTime'], 'dateTimeError', 'dateTimeErrorText', message); }
+  function showDateError(message) { showBookingFieldError(['bDate'], 'dateError', 'dateErrorText', message); }
+  function showTimeError(message) { showBookingFieldError(['bTime'], 'timeError', 'timeErrorText', message); }
 
   document.getElementById('bName').addEventListener('input', clearBookingErrors);
   document.getElementById('bPhone').addEventListener('input', clearBookingErrors);
@@ -1447,7 +1452,7 @@
     }
 
     if (!date) {
-      showDateTimeError('Пожалуйста, укажите дату брони');
+      showDateError('Пожалуйста, укажите дату брони');
       document.getElementById('bDate').focus();
       return;
     }
@@ -1456,13 +1461,13 @@
     // (ручной ввод, некоторые версии Android/iOS). Проверяем дату явно.
     const todayStr = localDateStr();
     if (date < todayStr) {
-      showDateTimeError('Нельзя забронировать прошедшую дату — пожалуйста, выберите сегодня или позже');
+      showDateError('Нельзя забронировать прошедшую дату — пожалуйста, выберите сегодня или позже');
       document.getElementById('bDate').focus();
       return;
     }
 
     if (!time) {
-      showDateTimeError('Пожалуйста, укажите время брони');
+      showTimeError('Пожалуйста, укажите время брони');
       document.getElementById('bTime').focus();
       return;
     }
@@ -1475,7 +1480,7 @@
       const [th, tm] = time.split(':').map(Number);
       const selectedMinutes = th * 60 + tm;
       if (selectedMinutes <= nowMinutes) {
-        showDateTimeError('Нельзя забронировать на прошедшее время. Выберите более позднее время.');
+        showTimeError('Нельзя забронировать на прошедшее время. Выберите более позднее время.');
         document.getElementById('bTime').focus();
         return;
       }
@@ -1491,7 +1496,7 @@
       const timeMinutes = bh * 60 + bm;
       const isClosed = timeMinutes > 60 && timeMinutes < 780; // после 01:00 и до 13:00
       if (isClosed) {
-        showDateTimeError('Мы открыты с 13:00 до 01:00 — пожалуйста, выберите время в этом промежутке');
+        showTimeError('Мы открыты с 13:00 до 01:00 — пожалуйста, выберите время в этом промежутке');
         document.getElementById('bTime').focus();
         return;
       }
