@@ -211,18 +211,23 @@
     /* SECTION TITLE */
     .sec { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin: 16px 0 10px; }
 
-    .menu-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
-    .menu-item:last-child { border-bottom: none; }
-    .menu-item.expandable { cursor: pointer; }
-    .menu-item-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    /* MENU */
+    .menu-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 16px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .menu-tabs::-webkit-scrollbar { display: none; }
+    .menu-tab { flex: 0 0 auto; font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 400; letter-spacing: 0.3px; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: 100px; padding: 9px 17px; cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+    .menu-tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 500; }
+    .menu-category-panel { display: none; }
+    .menu-category-panel.active { display: block; }
+    .menu-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2px 16px; margin-bottom: 14px; }
+    .menu-box:last-child { margin-bottom: 0; }
+    .menu-box-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); padding: 15px 0 9px; }
+    .menu-box-note { font-size: 10px; letter-spacing: 0.4px; text-transform: none; color: var(--text-muted); font-family: 'Inter', sans-serif; white-space: nowrap; }
+    .menu-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .menu-item:last-child { border-bottom: none; padding-bottom: 15px; }
+    .menu-item-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
     .menu-item-name { font-family: 'Jost', sans-serif; font-size: 15px; color: var(--text); font-weight: 300; }
-    .menu-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-    .menu-item-price { font-size: 14px; color: var(--accent); white-space: nowrap; }
-    .menu-chevron { color: var(--text-muted); flex-shrink: 0; transition: transform 0.2s; }
-    .menu-item.open .menu-chevron { transform: rotate(180deg); }
-    .menu-item-desc { display: none; font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-    .menu-item.open .menu-item-desc { display: block; }
-    .menu-subsec { font-family: 'Jost', sans-serif; font-size: 13px; letter-spacing: 0.5px; color: var(--text-sub); margin: 14px 0 2px; font-weight: 300; }
+    .menu-item-price { font-size: 13px; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+    .menu-item-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
 
     /* EVENTS */
     .event-item {
@@ -283,6 +288,14 @@
     .form-row > div { min-width: 0; }
     select.form-input { cursor: pointer; }
     textarea.form-input { resize: none; height: 90px; }
+
+    /* Валидация даты/времени брони — подсветка поля + пояснение под ним + баннер у кнопки.
+       Акцентный цвет, не красный (в На Крыше красного нет нигде). */
+    .form-input.field-invalid { border-color: var(--accent); background: rgba(184,115,51,0.08); }
+    .field-error { display: none; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 1.4; color: var(--accent); margin: -6px 0 14px; }
+    .field-error svg { flex-shrink: 0; margin-top: 1px; }
+    .form-alert { display: none; align-items: center; gap: 10px; background: var(--accent); color: var(--bg); border-radius: 14px; padding: 14px 16px; font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 12px; }
+    .form-alert svg { flex-shrink: 0; }
     .btn-book {
       width: 100%;
       padding: 16px;
@@ -709,6 +722,7 @@
 <!-- MENU -->
 <div class="screen" id="screen-menu">
   <div style="margin-top:14px"></div>
+  <div class="menu-tabs" id="menuTabs"></div>
   <div id="menuContent" style="padding:0 4px"><div class="no-data">Загружаю меню...</div></div>
 </div>
 
@@ -840,9 +854,13 @@
     <input class="form-input" id="pName" type="text" placeholder="Как к вам обращаться">
   </div>
 
-  <div class="form-group">
+  <div class="form-group" style="margin-bottom:6px">
     <label class="form-label">Телефон</label>
     <input class="form-input" id="pPhone" type="tel" value="+7" oninput="formatRuPhone(this)">
+  </div>
+  <div class="field-error" id="pPhoneError">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+    <span id="pPhoneErrorText"></span>
   </div>
 
   <div class="form-row form-group">
@@ -872,6 +890,10 @@
     </div>
   </div>
 
+  <div class="form-alert" id="profileAlert">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+    <span id="profileAlertText"></span>
+  </div>
   <button class="btn-book" onclick="saveProfile()">Сохранить</button>
 
   <div class="sec" style="margin-top:24px">История бронирований</div>
@@ -946,15 +968,23 @@
   <div class="success-msg" id="successMsg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" style="flex-shrink:0"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg><span>Заявка отправлена! Управляющий свяжется с вами для подтверждения.</span></div>
   <div id="bookingContextBanner" style="display:none;background:var(--accent-dim);border:1px solid rgba(184,115,51,0.3);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--accent);margin-bottom:14px;"></div>
 
-  <div class="form-group">
+  <div class="form-group" style="margin-bottom:6px">
     <label class="form-label">Имя</label>
     <input class="form-input" id="bName" type="text" placeholder="Ваше имя">
   </div>
-  <div class="form-group">
+  <div class="field-error" id="nameError">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+    <span id="nameErrorText"></span>
+  </div>
+  <div class="form-group" style="margin-bottom:6px">
     <label class="form-label">Телефон</label>
     <input class="form-input" id="bPhone" type="tel" value="+7" oninput="formatRuPhone(this)">
   </div>
-  <div class="form-row form-group">
+  <div class="field-error" id="phoneError">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+    <span id="phoneErrorText"></span>
+  </div>
+  <div class="form-row form-group" style="margin-bottom:6px">
     <div>
       <label class="form-label">Дата</label>
       <input class="form-input" id="bDate" type="date">
@@ -963,6 +993,10 @@
       <label class="form-label">Время</label>
       <input class="form-input" id="bTime" type="time" value="20:00">
     </div>
+  </div>
+  <div class="field-error" id="dateTimeError">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+    <span id="dateTimeErrorText"></span>
   </div>
   <div class="form-group">
     <label class="form-label">Количество гостей</label>
@@ -974,6 +1008,10 @@
   <div class="form-group">
     <label class="form-label">Комментарий</label>
     <textarea class="form-input" id="bComment" placeholder="Пожелания по столу, повод, что-то важное..."></textarea>
+  </div>
+  <div class="form-alert" id="bookAlert">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+    <span id="bookAlertText"></span>
   </div>
   <button class="btn-book" id="bookBtn" onclick="sendBooking()">Забронировать
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-left:6px"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
@@ -1067,9 +1105,13 @@
   <div class="confirm-card">
     <div class="confirm-title">Отменить бронь?</div>
     <div class="confirm-sub" id="cancelConfirmDate"></div>
+    <div class="form-alert" id="cancelAlert" style="margin:0 0 14px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+      <span id="cancelAlertText"></span>
+    </div>
     <div class="confirm-buttons">
       <button class="confirm-btn" onclick="closeCancelConfirm()">Назад</button>
-      <button class="confirm-btn danger" onclick="confirmCancelBooking()">Да, отменить</button>
+      <button class="confirm-btn danger" id="cancelConfirmBtn" onclick="confirmCancelBooking()">Да, отменить</button>
     </div>
   </div>
 </div>
@@ -1219,6 +1261,29 @@
   document.getElementById('bDate').addEventListener('change', updateTimeMin);
   updateTimeMin();
 
+  // Ошибки формы брони — подсветка поля + пояснение под ним + общий баннер у кнопки
+  // (вместо системного alert()). Сбрасываются, как только гость трогает любое из полей.
+  function showBookingFieldError(fieldIds, inlineWrapId, inlineTextId, message) {
+    fieldIds.forEach(id => document.getElementById(id).classList.add('field-invalid'));
+    document.getElementById(inlineTextId).textContent = message;
+    document.getElementById(inlineWrapId).style.display = 'flex';
+    document.getElementById('bookAlertText').textContent = message;
+    document.getElementById('bookAlert').style.display = 'flex';
+  }
+  function clearBookingErrors() {
+    ['bName', 'bPhone', 'bDate', 'bTime'].forEach(id => document.getElementById(id).classList.remove('field-invalid'));
+    ['nameError', 'phoneError', 'dateTimeError'].forEach(id => document.getElementById(id).style.display = 'none');
+    document.getElementById('bookAlert').style.display = 'none';
+  }
+  function showNameError(message) { showBookingFieldError(['bName'], 'nameError', 'nameErrorText', message); }
+  function showPhoneError(message) { showBookingFieldError(['bPhone'], 'phoneError', 'phoneErrorText', message); }
+  function showDateTimeError(message) { showBookingFieldError(['bDate', 'bTime'], 'dateTimeError', 'dateTimeErrorText', message); }
+
+  document.getElementById('bName').addEventListener('input', clearBookingErrors);
+  document.getElementById('bPhone').addEventListener('input', clearBookingErrors);
+  document.getElementById('bDate').addEventListener('input', clearBookingErrors);
+  document.getElementById('bTime').addEventListener('input', clearBookingErrors);
+
   // Status
   function checkStatus() {
     const h = new Date().getHours();
@@ -1271,6 +1336,7 @@
     dateField.min = today;
     timeField.value = '20:00';
     updateTimeMin();
+    clearBookingErrors();
     showScreen('book');
     prefillBookingForm();
   }
@@ -1317,20 +1383,24 @@
     const guests = document.getElementById('bGuests').value;
     const comment = document.getElementById('bComment').value.trim();
 
+    clearBookingErrors();
+
     if (name.length < 2) {
-      alert('Пожалуйста, укажите имя полностью');
+      showNameError('Пожалуйста, укажите имя полностью');
+      document.getElementById('bName').focus();
       return;
     }
 
     // Телефон должен быть реально заполнен, а не оставлен как "+7" по умолчанию
     const phoneDigits = phone.replace(/\D/g, '');
     if (!phone || phone === '+7' || phoneDigits.length < 11) {
-      alert('Пожалуйста, укажите номер телефона полностью');
+      showPhoneError('Пожалуйста, укажите номер телефона полностью');
+      document.getElementById('bPhone').focus();
       return;
     }
 
     if (!date) {
-      alert('Пожалуйста, укажите дату брони');
+      showDateTimeError('Пожалуйста, укажите дату брони');
       document.getElementById('bDate').focus();
       return;
     }
@@ -1339,13 +1409,13 @@
     // (ручной ввод, некоторые версии Android/iOS). Проверяем дату явно.
     const todayStr = localDateStr();
     if (date < todayStr) {
-      alert('Нельзя забронировать прошедшую дату — пожалуйста, выберите сегодня или позже');
+      showDateTimeError('Нельзя забронировать прошедшую дату — пожалуйста, выберите сегодня или позже');
       document.getElementById('bDate').focus();
       return;
     }
 
     if (!time) {
-      alert('Пожалуйста, укажите время брони');
+      showDateTimeError('Пожалуйста, укажите время брони');
       document.getElementById('bTime').focus();
       return;
     }
@@ -1358,7 +1428,7 @@
       const [th, tm] = time.split(':').map(Number);
       const selectedMinutes = th * 60 + tm;
       if (selectedMinutes <= nowMinutes) {
-        alert('Это время уже прошло — пожалуйста, выберите время позже текущего');
+        showDateTimeError('Нельзя забронировать на прошедшее время. Выберите более позднее время.');
         document.getElementById('bTime').focus();
         return;
       }
@@ -1374,7 +1444,7 @@
       const timeMinutes = bh * 60 + bm;
       const isClosed = timeMinutes > 60 && timeMinutes < 780; // после 01:00 и до 13:00
       if (isClosed) {
-        alert('Мы открыты с 13:00 до 01:00 — пожалуйста, выберите время в этом промежутке');
+        showDateTimeError('Мы открыты с 13:00 до 01:00 — пожалуйста, выберите время в этом промежутке');
         document.getElementById('bTime').focus();
         return;
       }
@@ -1486,61 +1556,90 @@
 
   async function loadMenu() {
     const el = document.getElementById('menuContent');
+    const tabsEl = document.getElementById('menuTabs');
     try {
       const res = await fetch(`${PROXY_BASE}/api/menu`);
       if (!res.ok) throw new Error();
       const items = await res.json();
-      renderMenu(items, el);
+      renderMenu(items, el, tabsEl);
     } catch {
+      tabsEl.innerHTML = '';
       el.innerHTML = '<div class="no-data">Меню временно недоступно</div>';
     }
   }
 
-  function renderMenu(items, el) {
+  // Категории в Notion называются как в CRM/на кухне ("Еда"), но в меню гостя
+  // показываем более понятную гостю вывеску раздела ("Кухня"). Порядок вкладок —
+  // фиксированный; неизвестная категория (если появится новая) уедет в конец, чтобы не потерять позиции.
+  const MENU_CATEGORY_ORDER = ['Еда', 'Коктейли', 'Алкоголь', 'Напитки', 'Кальян'];
+  const MENU_CATEGORY_LABEL = { 'Еда': 'Кухня' };
+
+  function menuEsc(s) {
+    return String(s ?? '').replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+  }
+
+  function renderMenu(items, el, tabsEl) {
     if (!items.length) {
+      tabsEl.innerHTML = '';
       el.innerHTML = '<div class="no-data">Меню обновляется<br><br>Загляните чуть позже</div>';
       return;
     }
-    const CATEGORY_ORDER = ['Кальян', 'Еда', 'Напитки'];
     const byCategory = {};
     items.forEach(it => {
       if (!byCategory[it.category]) byCategory[it.category] = [];
       byCategory[it.category].push(it);
     });
+    const cats = MENU_CATEGORY_ORDER.filter(c => byCategory[c]?.length);
+    Object.keys(byCategory).forEach(c => { if (!cats.includes(c)) cats.push(c); });
 
-    function renderItem(it) {
-      const hasDesc = !!it.description;
-      return `<div class="menu-item${hasDesc ? ' expandable' : ''}" ${hasDesc ? 'onclick="this.classList.toggle(\'open\')"' : ''}>
+    function renderItem(it, hidePrice) {
+      return `<div class="menu-item">
           <div class="menu-item-row">
-            <div class="menu-item-name">${it.name}</div>
-            <div class="menu-item-right">
-              ${it.price !== null ? `<div class="menu-item-price">${it.price} ₽</div>` : ''}
-              ${hasDesc ? `<svg class="menu-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="6 9 12 15 18 9"/></svg>` : ''}
-            </div>
+            <div class="menu-item-name">${menuEsc(it.name)}</div>
+            ${!hidePrice && it.price !== null ? `<div class="menu-item-price">${it.price} ₽</div>` : ''}
           </div>
-          ${hasDesc ? `<div class="menu-item-desc">${it.description}</div>` : ''}
+          ${it.description ? `<div class="menu-item-desc">${menuEsc(it.description)}</div>` : ''}
         </div>`;
     }
 
-    el.innerHTML = CATEGORY_ORDER.filter(c => byCategory[c]?.length).map(cat => {
+    // Блок-бокс на подраздел (или на позиции без подраздела). Если внутри у всех
+    // позиций одна и та же цена — выносим её один раз в шапку бокса, а не на каждую строку.
+    function renderGroup(label, groupItems) {
+      const prices = groupItems.filter(it => it.price !== null).map(it => it.price);
+      const uniform = prices.length === groupItems.length && prices.length > 1 && prices.every(p => p === prices[0]);
+      const note = uniform ? `${prices[0]} ₽ за позицию` : '';
+      const labelHtml = label
+        ? `<div class="menu-box-label"><span>${menuEsc(label)}</span>${note ? `<span class="menu-box-note">${note}</span>` : ''}</div>`
+        : '';
+      return `<div class="menu-box"${label ? '' : ' style="padding-top:14px"'}>
+          ${labelHtml}
+          ${groupItems.map(it => renderItem(it, uniform)).join('')}
+        </div>`;
+    }
+
+    tabsEl.innerHTML = cats.map((c, i) => `<button class="menu-tab${i === 0 ? ' active' : ''}" data-cat="${menuEsc(c)}" onclick="switchMenuTab(this.dataset.cat)">${menuEsc(MENU_CATEGORY_LABEL[c] || c)}</button>`).join('');
+
+    el.innerHTML = cats.map((cat, i) => {
       const catItems = byCategory[cat];
 
-      // Без подкатегории — просто список; без неё все позиции. С подкатегориями —
-      // группируем блоками с подзаголовком, в порядке первого появления (уже отсортировано сервером).
+      // Без подкатегории — общий бокс без подписи; с подкатегориями — бокс на каждую,
+      // в порядке первого появления (уже отсортировано сервером по "Порядок").
       const plain = catItems.filter(it => !it.subcategory);
       const grouped = catItems.filter(it => it.subcategory);
 
       const subOrder = [];
       grouped.forEach(it => { if (!subOrder.includes(it.subcategory)) subOrder.push(it.subcategory); });
 
-      const plainHtml = plain.map(renderItem).join('');
-      const groupedHtml = subOrder.map(sub => {
-        const subItems = grouped.filter(it => it.subcategory === sub);
-        return `<div class="menu-subsec">${sub}</div>${subItems.map(renderItem).join('')}`;
-      }).join('');
+      const plainHtml = plain.length ? renderGroup('', plain) : '';
+      const groupedHtml = subOrder.map(sub => renderGroup(sub, grouped.filter(it => it.subcategory === sub))).join('');
 
-      return `<div class="sec">${cat}</div>${plainHtml}${groupedHtml}`;
+      return `<div class="menu-category-panel${i === 0 ? ' active' : ''}" data-cat="${menuEsc(cat)}">${plainHtml}${groupedHtml}</div>`;
     }).join('');
+  }
+
+  function switchMenuTab(cat) {
+    document.querySelectorAll('.menu-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+    document.querySelectorAll('.menu-category-panel').forEach(p => p.classList.toggle('active', p.dataset.cat === cat));
   }
 
   async function loadEvents() {
@@ -1728,6 +1827,9 @@
       if (user.photo_url) {
         avatarEl.innerHTML = `<img src="${user.photo_url}" style="width:100%;height:100%;object-fit:cover;">`;
       }
+      loadFreshAvatar(user.id, url => {
+        avatarEl.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">`;
+      });
     } else {
       nameEl.textContent = 'Гость';
       usernameEl.textContent = '';
@@ -1822,6 +1924,7 @@
   function openCancelConfirm(phone, entry, refreshFn) {
     pendingCancel = { phone, entry, refreshFn: refreshFn || (() => fetchGuestData(phone)) };
     document.getElementById('cancelConfirmDate').textContent = entryDisplay(entry);
+    document.getElementById('cancelAlert').style.display = 'none';
     document.getElementById('cancelConfirmOverlay').classList.add('show');
   }
 
@@ -1830,19 +1933,31 @@
     document.getElementById('cancelConfirmOverlay').classList.remove('show');
   }
 
+  // Модал закрываем только при успехе — при ошибке гость остаётся в нём
+  // и видит баннер, а не проваливается в системный alert() без контекста.
   async function confirmCancelBooking() {
     if (!pendingCancel) return;
     const { phone, entry, refreshFn } = pendingCancel;
-    closeCancelConfirm();
+    const btn = document.getElementById('cancelConfirmBtn');
+    document.getElementById('cancelAlert').style.display = 'none';
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Отменяем...';
     try {
       await fetch(`${PROXY_BASE}/api/booking/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, entry })
       });
+      btn.disabled = false;
+      btn.textContent = originalText;
+      closeCancelConfirm();
       if (refreshFn) refreshFn();
     } catch {
-      alert('Не удалось отменить бронь. Попробуйте позже.');
+      btn.disabled = false;
+      btn.textContent = originalText;
+      document.getElementById('cancelAlertText').textContent = 'Не удалось отменить бронь. Попробуйте позже.';
+      document.getElementById('cancelAlert').style.display = 'flex';
     }
   }
 
@@ -1909,14 +2024,35 @@
     }
   }
 
+  // Ошибки формы профиля — тот же паттерн, что и в брони: подсветка поля + пояснение
+  // под ним + баннер у кнопки, вместо системного alert().
+  function showProfileError(message, fieldId) {
+    if (fieldId) {
+      document.getElementById(fieldId).classList.add('field-invalid');
+      document.getElementById(fieldId + 'Error').style.display = 'flex';
+      document.getElementById(fieldId + 'ErrorText').textContent = message;
+    }
+    document.getElementById('profileAlertText').textContent = message;
+    document.getElementById('profileAlert').style.display = 'flex';
+  }
+  function clearProfileErrors() {
+    document.getElementById('pPhone').classList.remove('field-invalid');
+    document.getElementById('pPhoneError').style.display = 'none';
+    document.getElementById('profileAlert').style.display = 'none';
+  }
+  document.getElementById('pPhone').addEventListener('input', clearProfileErrors);
+
   async function saveProfile() {
     const phone = document.getElementById('pPhone').value.trim();
     const day = document.getElementById('pBirthDay').value;
     const month = document.getElementById('pBirthMonth').value;
     const fullName = document.getElementById('pName').value.trim() || 'Гость';
 
+    clearProfileErrors();
+
     if (!phone || phone === '+7') {
-      alert('Укажите номер телефона');
+      showProfileError('Укажите номер телефона', 'pPhone');
+      document.getElementById('pPhone').focus();
       return;
     }
 
@@ -1946,7 +2082,7 @@
 
       fetchGuestData(phone);
     } catch {
-      alert('Не удалось сохранить. Попробуйте ещё раз.');
+      showProfileError('Не удалось сохранить. Попробуйте ещё раз.');
     }
   }
 
@@ -1971,6 +2107,20 @@
 
   // ─── АВАТАР В ШАПКЕ ───────────────────────────────
 
+  // initDataUnsafe.user.photo_url приходит от Telegram-клиента и может подолгу не обновляться
+  // после смены фото в профиле (тот же кэш WebView, что мы уже ловили с другими полями initData).
+  // Показываем его сразу (чтобы не мигать пустым местом), а следом тихо спрашиваем актуальное
+  // фото у нашего прокси (он идёт напрямую в Bot API) и подменяем, если оно отличается.
+  async function loadFreshAvatar(telegramId, onUrl) {
+    if (!telegramId) return;
+    try {
+      const res = await fetch(`${PROXY_BASE}/api/guest/photo?telegramId=${telegramId}`);
+      if (!res.ok) return;
+      const { photoUrl } = await res.json();
+      if (photoUrl) onUrl(photoUrl);
+    } catch {}
+  }
+
   function initHeaderAvatar() {
     const user = getTelegramUser();
     const el = document.getElementById('headerAvatar');
@@ -1978,16 +2128,18 @@
 
     const initial = (user.first_name || 'Г').charAt(0).toUpperCase();
 
-    if (user.photo_url) {
+    function setPhoto(url) {
       const img = new Image();
       img.referrerPolicy = 'no-referrer';
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
       img.onload = () => { el.textContent = ''; el.appendChild(img); };
-      img.onerror = () => { el.textContent = initial; };
-      img.src = user.photo_url;
-    } else {
-      el.textContent = initial;
+      img.onerror = () => {};
+      img.src = url;
     }
+
+    el.textContent = initial;
+    if (user.photo_url) setPhoto(user.photo_url);
+    loadFreshAvatar(user.id, setPhoto);
   }
 
   // ─── СТАТУС БРОНИ ─────────────────────────────────
