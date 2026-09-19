@@ -230,7 +230,6 @@
     .menu-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .menu-item-price { font-size: 13px; color: var(--accent); white-space: nowrap; }
     .menu-item-chevron { color: var(--text-muted); flex-shrink: 0; }
-    .menu-item-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
 
     /* MENU ITEM DETAIL — полноэкранный "погружённый" вид блюда, тот же язык, что у VIP/Бар сторис */
     .menu-detail {
@@ -1652,7 +1651,6 @@
               <svg class="menu-item-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 6 15 12 9 18"/></svg>
             </div>
           </div>
-          ${it.description ? `<div class="menu-item-desc">${menuEsc(it.description)}</div>` : ''}
         </div>`;
     }
 
