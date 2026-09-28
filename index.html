@@ -322,7 +322,58 @@
     .menu-detail-price { font-size: 17px; color: var(--accent); margin-bottom: 18px; }
     .menu-detail-desc { font-size: 14px; line-height: 1.65; color: var(--text-sub); }
 
-    /* EVENTS */
+    /* АФИША — как на сайте: карточка с постером (из поля «Постер» мероприятия в Notion,
+       прикрепляется в приложении персонала), «Подробнее» — отдельный экран мероприятия */
+    .ev-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 26px; overflow: hidden;
+      margin-bottom: 14px; cursor: pointer; transition: border-color 0.2s, transform 0.15s;
+    }
+    .ev-card:active { transform: scale(0.99); border-color: rgba(184,115,51,0.4); }
+    .ev-poster { position: relative; aspect-ratio: 4 / 5; background: #140a03; overflow: hidden; }
+    .ev-poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ev-ph {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+      background: radial-gradient(ellipse 90% 60% at 50% 30%, rgba(184,115,51,0.28) 0%, transparent 70%), linear-gradient(180deg, #2a160a 0%, #140a03 100%);
+    }
+    .ev-ph .d { font-family: 'Jost', sans-serif; font-size: 84px; line-height: 1; color: var(--text); }
+    .ev-ph .m { font-size: 12px; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); }
+    .ev-ph .f { margin-top: 14px; font-size: 10.5px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text-muted); }
+    .ev-body { padding: 18px 18px 20px; }
+    .ev-pill {
+      display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 14px; border-radius: 999px;
+      background: rgba(240,223,192,0.05); border: 1px solid var(--border); font-size: 12px; color: var(--text);
+    }
+    .ev-pill .sp { color: var(--accent); }
+    .ev-title { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 22px; line-height: 1.25; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text); margin: 16px 0 0; }
+    .ev-fmt { margin-top: 14px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text); }
+    .ev-desc { margin-top: 8px; font-size: 13px; line-height: 1.6; color: var(--text-sub); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .ev-more {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 10px 18px; border-radius: 999px;
+      border: 1px solid var(--border); background: rgba(240,223,192,0.05); font-size: 13px; color: var(--text);
+    }
+    /* экран мероприятия */
+    .evd-back { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 14px; padding: 8px 14px 8px 10px; border-radius: 999px; border: 1px solid var(--border); background: rgba(240,223,192,0.04); color: var(--text-sub); font: inherit; font-size: 12.5px; cursor: pointer; }
+    .evd-title { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 28px; line-height: 1.15; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text); margin-bottom: 18px; }
+    .evd-poster { position: relative; border-radius: 24px; overflow: hidden; border: 1px solid var(--border); background: #140a03; }
+    .evd-poster img { display: block; width: 100%; height: auto; }
+    .evd-poster.ph { aspect-ratio: 4 / 5; }
+    .evd-sec { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 21px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text); margin: 28px 0 14px; }
+    .evd-facts { display: flex; flex-wrap: wrap; gap: 14px 32px; padding-top: 14px; border-top: 1px solid var(--border); margin-bottom: 18px; }
+    .evd-facts .l { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .evd-facts .v { font-size: 15px; color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; }
+    .evd-desc { font-size: 14px; line-height: 1.75; color: var(--text-sub); }
+    .evd-desc p + p { margin-top: 12px; }
+    .evd-book { margin-top: 22px; }
+    .evd-other { display: flex; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); margin-bottom: 8px; cursor: pointer; }
+    .evd-other .th { position: relative; width: 58px; height: 72px; flex-shrink: 0; border-radius: 12px; overflow: hidden; background: #140a03; }
+    .evd-other .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .evd-other .th .ev-ph .d { font-size: 26px; }
+    .evd-other .th .ev-ph .m { font-size: 8px; letter-spacing: 2px; }
+    .evd-other .th .ev-ph .f { display: none; }
+    .evd-other .when { font-size: 11.5px; color: var(--accent); margin-bottom: 4px; }
+    .evd-other .nm { font-family: 'Jost', sans-serif; font-size: 15px; text-transform: uppercase; color: var(--text); line-height: 1.25; }
+
+    /* EVENTS (старый список — оставлен для совместимости стилей) */
     .event-item {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -1140,6 +1191,11 @@
   <div id="eventsList"><div class="loading"><div class="spinner"></div>Загружаю...</div></div>
 </div>
 
+<!-- МЕРОПРИЯТИЕ (как страница события на сайте: постер, о событии, бронь) -->
+<div class="screen" id="screen-event">
+  <div id="eventDetail"></div>
+</div>
+
 <!-- ABOUT -->
 <div class="screen" id="screen-about">
   <div style="margin-top:14px"></div>
@@ -1536,7 +1592,7 @@
   }
 
   // Navigation
-  const screens = ['home','book','events','about','faq','menu','bar','vip','profile','admin','location','review'];
+  const screens = ['home','book','events','event','about','faq','menu','bar','vip','profile','admin','location','review'];
   function showScreen(name) {
     if (name !== 'bar' && typeof storiesState !== 'undefined' && storiesState.bar.timer) {
       clearTimeout(storiesState.bar.timer);
@@ -1554,7 +1610,7 @@
     const navMap = {'home':0,'book':1,'faq':2};
     const idx = navMap[name];
     if (idx !== undefined) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
-    if (name === 'events') {
+    if (name === 'events' || name === 'event') {
       document.querySelectorAll('.nav-tab')[1].classList.remove('active');
     }
     window.scrollTo(0,0);
@@ -1935,49 +1991,90 @@
     }
   }
 
+  // Афиша — как на сайте: карточка с постером, «Подробнее» → экран мероприятия
+  // с полным описанием и кнопкой брони. Постер — поле «Постер» мероприятия в Notion
+  // (прикрепляется в приложении персонала); нет постера — крупная дата на фирменном фоне.
+  const EV_MONTHS_GEN = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  let eventsData = [];
+  function evEsc(s) {
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function evParts(raw) {
+    raw = String(raw || '');
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+    const t = /T(\d{2}):(\d{2})/.exec(raw);
+    const day = m ? Number(m[3]) : '';
+    const mon = m ? Number(m[2]) - 1 : -1;
+    return {
+      day,
+      monShort: mon >= 0 ? MONTHS[mon] : '',
+      dateLabel: m ? `${day} ${EV_MONTHS_GEN[mon]}` : '',
+      time: t && !(t[1] === '00' && t[2] === '00') ? `${t[1]}:${t[2]}` : ''
+    };
+  }
+  function evPosterHTML(e) {
+    const p = evParts(e.date);
+    return `<div class="ev-ph"><div class="d">${p.day}</div><div class="m">${evEsc(p.monShort)}</div>${e.format ? `<div class="f">${evEsc(e.format)}</div>` : ''}</div>
+      ${e.poster ? `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}" loading="lazy" onerror="this.remove()">` : ''}`;
+  }
+
   function renderEvents(events, el) {
-    if (!events.length) {
+    eventsData = Array.isArray(events) ? events : [];
+    if (!eventsData.length) {
       el.innerHTML = '<div class="no-data">Ближайших мероприятий пока нет<br><br>Следите за обновлениями</div>';
       return;
     }
-    el.innerHTML = events.map((e, i) => {
-      const d = new Date(e.date);
-      const safeName = e.name.replace(/'/g, "\\'");
-
-      // Если в дате указано точное время (не только дата) — показываем его
-      const hasTime = typeof e.date === 'string' && e.date.includes('T');
-      const timeStr = hasTime
-        ? d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-        : null;
-
-      return `<div class="event-item-wrap">
-        <div class="event-item" onclick="toggleEvent(${i})" style="cursor:pointer">
-          <div class="event-date"><div class="day">${d.getDate()}</div><div class="mon">${MONTHS[d.getMonth()]}</div></div>
-          <div class="event-div"></div>
-          <div class="event-info"><h4>${e.name}</h4><p>${e.format}${timeStr ? ' · ' + timeStr : ''}</p></div>
-          ${e.format ? `<span class="event-tag">${e.format}</span>` : ''}
-          <svg class="event-chevron" id="eventChevron${i}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-left:8px;flex-shrink:0;transition:transform 0.2s;color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-        <div class="event-detail" id="eventDetail${i}" style="display:none;">
-          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--accent);margin-bottom:10px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-            <span>Начало: ${timeStr || 'уточняется'}</span>
-          </div>
-          ${e.description ? `<p style="font-size:13px;color:var(--text-sub);line-height:1.6;margin-bottom:14px;">${e.description}</p>` : ''}
-          <button class="btn-book" onclick="bookForEvent('${safeName}','${e.date}')">Забронировать на мероприятие
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-left:6px"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-          </button>
+    el.innerHTML = eventsData.map((e, i) => {
+      const p = evParts(e.date);
+      return `<div class="ev-card" onclick="openEventDetail(${i})">
+        <div class="ev-poster">${evPosterHTML(e)}</div>
+        <div class="ev-body">
+          ${p.dateLabel ? `<div class="ev-pill"><span>${p.dateLabel}</span>${p.time ? `<span class="sp">✦</span><span>Сбор гостей в ${p.time}</span>` : ''}</div>` : ''}
+          <div class="ev-title">${evEsc(e.name)}</div>
+          ${e.format ? `<div class="ev-fmt">${evEsc(e.format)}</div>` : ''}
+          ${e.description ? `<div class="ev-desc">${evEsc(e.description)}</div>` : ''}
+          <div class="ev-more">Подробнее <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
         </div>
       </div>`;
     }).join('');
   }
 
-  function toggleEvent(i) {
-    const detail = document.getElementById('eventDetail' + i);
-    const chevron = document.getElementById('eventChevron' + i);
-    const isOpen = detail.style.display !== 'none';
-    detail.style.display = isOpen ? 'none' : 'block';
-    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  function openEventDetail(i) {
+    const e = eventsData[i];
+    if (!e) return;
+    const p = evParts(e.date);
+    const facts = [];
+    if (p.dateLabel) facts.push(['Когда', p.dateLabel]);
+    if (p.time) facts.push(['Сбор гостей', p.time]);
+    if (e.format) facts.push(['Формат', e.format]);
+    const desc = String(e.description || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
+    const others = eventsData.map((x, j) => ({ x, j })).filter(o => o.j !== i);
+    document.getElementById('eventDetail').innerHTML = `
+      <button class="evd-back" onclick="showScreen('events')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>Афиша</button>
+      <div class="evd-title">${evEsc(e.name)}</div>
+      <div class="evd-poster${e.poster ? '' : ' ph'}">${e.poster
+        ? `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}" onerror="this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPosterHTML(eventsData[${i}]).replace(/<img[^>]*>/, '');">`
+        : evPosterHTML(e)}</div>
+      <div class="evd-sec">О событии</div>
+      ${facts.length ? `<div class="evd-facts">${facts.map(([l, v]) => `<div><div class="l">${l}:</div><div class="v">${evEsc(v)}</div></div>`).join('')}</div>` : ''}
+      <div class="evd-desc">${desc.length ? desc.map(t => `<p>${evEsc(t)}</p>`).join('') : '<p>Подробности вечера уточняйте у администратора — забронируйте стол, и мы свяжемся с вами.</p>'}</div>
+      <button class="btn-book evd-book" onclick="bookForEventIdx(${i})">Забронировать
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-left:6px"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+      </button>
+      ${others.length ? `<div class="evd-sec">Другие события</div>${others.map(({ x, j }) => {
+        const q = evParts(x.date);
+        return `<div class="evd-other" onclick="openEventDetail(${j})">
+          <div class="th">${evPosterHTML(x)}</div>
+          <div style="min-width:0"><div class="when">${[q.dateLabel, q.time].filter(Boolean).join(' · ')}</div><div class="nm">${evEsc(x.name)}</div></div>
+        </div>`;
+      }).join('')}` : ''}
+      <div style="height:24px"></div>`;
+    showScreen('event');
+  }
+
+  function bookForEventIdx(i) {
+    const e = eventsData[i];
+    if (e) bookForEvent(e.name, e.date);
   }
 
   function bookForEvent(eventName, eventDate) {
@@ -2005,7 +2102,7 @@
 
     const banner = document.getElementById('bookingContextBanner');
     if (banner) {
-      banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 3l1.3 5.7L19 10l-5.7 1.3L12 17l-1.3-5.7L5 10l5.7-1.3L12 3z"/></svg><span>Бронируете на: ${eventName}</span></span>`;
+      banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 3l1.3 5.7L19 10l-5.7 1.3L12 17l-1.3-5.7L5 10l5.7-1.3L12 3z"/></svg><span>Бронируете на: ${evEsc(eventName)}</span></span>`;
       banner.style.display = 'block';
     }
   }
