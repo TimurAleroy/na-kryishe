@@ -1978,18 +1978,64 @@
     document.getElementById('menuDetailOverlay').classList.remove('show');
   }
 
-  async function loadEvents() {
-
-    const list = document.getElementById('eventsList');
+  // Афиша грузится заранее: пока гость на главной, приложение в фоне подтягивает
+  // список мероприятий и постеры и хранит их в телефоне. При входе в «Мероприятия»
+  // всё уже на экране; свежие данные подгружаются тихо и перерисовывают экран,
+  // только если что-то реально изменилось (без мигания).
+  const EVENTS_URL = 'https://notion-proxy-na-kryishe-production.up.railway.app/api/events';
+  const EVENTS_CACHE_KEY = 'events_cache_v1';
+  let eventsFetch = null;
+  let eventsShownJson = '';
+  function eventsFromCache() {
     try {
-      const res = await fetch('https://notion-proxy-na-kryishe-production.up.railway.app/api/events');
-      if (!res.ok) throw new Error();
-      const events = await res.json();
-      renderEvents(events, list);
-    } catch {
-      list.innerHTML = '<div class="no-data">Мероприятия временно недоступны</div>';
+      const raw = localStorage.getItem(EVENTS_CACHE_KEY);
+      const list = raw ? JSON.parse(raw) : null;
+      return Array.isArray(list) ? list : null;
+    } catch { return null; }
+  }
+  function fetchEventsFresh() {
+    if (!eventsFetch) {
+      eventsFetch = fetch(EVENTS_URL)
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(list => {
+          if (!Array.isArray(list)) throw new Error();
+          try { localStorage.setItem(EVENTS_CACHE_KEY, JSON.stringify(list)); } catch {}
+          preloadPosters(list);
+          return list;
+        })
+        .finally(() => { setTimeout(() => { eventsFetch = null; }, 0); });
+    }
+    return eventsFetch;
+  }
+  // постеры — заранее в кэш телефона (ссылки постоянные, повторно не качаются)
+  const preloadedPosters = new Set();
+  function preloadPosters(list) {
+    for (const e of list) {
+      if (!e.poster || preloadedPosters.has(e.poster)) continue;
+      preloadedPosters.add(e.poster);
+      const im = new Image();
+      im.decoding = 'async';
+      im.src = e.poster;
     }
   }
+  function showEventsList(list) {
+    const json = JSON.stringify(list);
+    if (json === eventsShownJson && document.querySelector('#eventsList .ev-card')) return; // ничего не поменялось
+    eventsShownJson = json;
+    renderEvents(list, document.getElementById('eventsList'));
+  }
+  async function loadEvents() {
+    const list = document.getElementById('eventsList');
+    const cached = eventsData.length ? eventsData : eventsFromCache();
+    if (cached) showEventsList(cached);
+    try {
+      showEventsList(await fetchEventsFresh());
+    } catch {
+      if (!cached) list.innerHTML = '<div class="no-data">Мероприятия временно недоступны</div>';
+    }
+  }
+  // При открытии приложения loadEvents() вызывается ниже (рядом с checkStatus) —
+  // афиша и постеры подтягиваются в фоне ещё на главной.
 
   // Афиша — как на сайте: карточка с постером, «Подробнее» → экран мероприятия
   // с полным описанием и кнопкой брони. Постер — поле «Постер» мероприятия в Notion
