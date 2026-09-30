@@ -1205,7 +1205,7 @@
     <div>
       <div class="form-group" style="margin-bottom:6px">
         <label class="form-label">Время</label>
-        <select class="form-input" id="bTime" required><option value="" disabled selected>Выберите</option></select>
+        <input class="form-input" id="bTime" type="time" value="20:00">
       </div>
       <div class="field-error" id="timeError">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
@@ -1664,35 +1664,12 @@
 
   // Если выбрана сегодняшняя дата — подсказываем браузеру не показывать прошедшее время
   // (это только UX-подсказка, окончательная проверка всё равно в sendBooking)
-  // ─── Время брони: список с шагом 30 минут, 13:00 … 00:30 ─────────
-  // Раньше было поле времени с готовым «20:00» — гость часто не замечал его и
-  // бронировал не на то время. Теперь время нужно выбрать, а на сегодня
-  // в списке только то время, которое ещё не прошло (по Москве).
-  const TIME_SLOTS = (() => {
-    const out = [];
-    for (let m = 13 * 60; m <= 24 * 60 + 30; m += 30) {
-      const h = Math.floor(m / 60) % 24;
-      out.push(`${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
-    }
-    return out;
-  })();
-  function buildTimeOptions(keep) {
-    const sel = document.getElementById('bTime');
-    const date = document.getElementById('bDate').value;
-    const wanted = keep !== undefined ? keep : sel.value;
-    const now = mskNowParts().ts;
-    let slots = TIME_SLOTS.filter(t => !date || bookingMoment(date, t).ts > now);
-    // Время мероприятия может быть «нестандартным» (например 19:15) — добавляем его в список
-    if (wanted && !slots.includes(wanted) && (!date || bookingMoment(date, wanted).ts > now)) {
-      slots = slots.concat([wanted]).sort((a, b) => bookingMoment('2000-01-01', a).ts - bookingMoment('2000-01-01', b).ts);
-    }
-    sel.innerHTML = `<option value="" disabled>${slots.length ? 'Выберите' : 'На сегодня уже поздно'}</option>` +
-      slots.map(t => `<option value="${t}">${t}${Number(t.slice(0, 2)) < 6 ? ' (ночь)' : ''}</option>`).join('');
-    sel.value = slots.includes(wanted) ? wanted : '';
-  }
+  // Подсказку min на поле времени не ставим: вечером 00:30 «меньше» текущего
+  // времени, и браузер не давал бы выбрать бронь после полуночи.
+  // Все проверки — в sendBooking. Здесь только держим минимальную дату.
   function updateTimeMin() {
+    document.getElementById('bTime').removeAttribute('min');
     document.getElementById('bDate').min = venueTodayStr();
-    buildTimeOptions();
   }
 
   // ─── Гости: за одним столом до 5. «Больше 5» — подсказка написать управляющему ─────────
@@ -1711,7 +1688,7 @@
     const today = venueTodayStr();
     document.getElementById('bDate').value = today;
     document.getElementById('bDate').min = today;
-    buildTimeOptions('');
+    document.getElementById('bTime').value = '20:00';
     document.getElementById('bGuests').value = '';
     document.getElementById('bGuestsMore').style.display = 'none';
     document.getElementById('bComment').value = '';
@@ -1743,7 +1720,7 @@
   document.getElementById('bName').addEventListener('input', clearBookingErrors);
   document.getElementById('bPhone').addEventListener('input', clearBookingErrors);
   document.getElementById('bDate').addEventListener('input', clearBookingErrors);
-  document.getElementById('bTime').addEventListener('change', clearBookingErrors);
+  document.getElementById('bTime').addEventListener('input', clearBookingErrors);
 
   // Status
   function checkStatus() {
@@ -1916,7 +1893,7 @@
     }
 
     if (!time) {
-      showTimeError('Выберите время брони');
+      showTimeError('Пожалуйста, укажите время брони');
       document.getElementById('bTime').focus();
       return;
     }
@@ -2018,13 +1995,14 @@
     } catch {}
 
     // Итог брони: что именно отправили — дата, время, гости, что бронировали
-    const what = room ? escHtml(room) : (eventName ? `Мероприятие «${escHtml(eventName)}»` : 'Стол');
+    // Для обычного стола строку «Что» не показываем — и так понятно; только для ВИП-комнаты и мероприятия
+    const what = room ? escHtml(room) : (eventName ? `Мероприятие «${escHtml(eventName)}»` : '');
     const rows = [
       ['Когда', escHtml(capFirst(formatDateWeekday(moment.calISO)))],
       ['Время', escHtml(time)],
-      ['Гостей', escHtml(guests)],
-      ['Что', what]
+      ['Гостей', escHtml(guests)]
     ];
+    if (what) rows.push(['Что', what]);
     document.getElementById('bookingSummary').innerHTML = rows.map(([l, v]) => `<div class="booking-summary-row"><span class="l">${l}</span><span class="v">${v}</span></div>`).join('');
     const sub = document.getElementById('bookingOverlaySub');
     sub.textContent = !hasTelegramAuth()
@@ -2425,7 +2403,7 @@
           evDay = String(eventDate).slice(0, 10);
         }
         if (evDay >= venueTodayStr()) document.getElementById('bDate').value = evDay;
-        buildTimeOptions(evTime);
+        if (evTime) document.getElementById('bTime').value = evTime;
       }
     }
 
@@ -3219,8 +3197,6 @@
     const mo = new MutationObserver(updateBackButton);
     BACK_OVERLAYS.forEach(([id]) => { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); });
   }
-  buildTimeOptions('');
-
   checkStatus();
   loadEvents();
   initHeaderAvatar();
