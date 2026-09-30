@@ -440,6 +440,16 @@
     .field-error svg { flex-shrink: 0; margin-top: 1px; }
     .form-alert { display: none; align-items: center; gap: 10px; background: var(--accent); color: var(--bg); border-radius: 14px; padding: 14px 16px; font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 12px; }
     .form-alert svg { flex-shrink: 0; }
+    /* Подтверждение номера через Telegram (профиль) */
+    .verify-box { background: var(--bg-card); border: 1px solid rgba(184,115,51,0.35); border-radius: 14px; padding: 14px 16px; margin: 4px 0 16px; }
+    .verify-text { font-size: 13px; line-height: 1.45; color: var(--text-sub); margin-bottom: 12px; }
+    .verify-btn { width: 100%; min-height: 44px; border-radius: 100px; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .verify-btn:disabled { opacity: 0.6; }
+    .verified-note { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #4ade80; margin: 2px 0 14px; }
+    .history-badge { display: inline-block; font-size: 11px; margin-top: 3px; }
+    .history-badge.ok { color: #4ade80; }
+    .history-badge.wait { color: var(--accent); }
+    .history-badge.past, .history-badge.off { color: var(--text-muted); }
     .btn-book {
       width: 100%;
       padding: 16px;
@@ -989,12 +999,6 @@
   </button>
 </div>
 
-<!-- ADMIN -->
-<div class="screen" id="screen-admin">
-  <div class="sec" style="margin-top:14px">Активные брони</div>
-  <div id="adminBookingsList" class="no-data">Загружаю...</div>
-</div>
-
 <!-- PROFILE -->
 <div class="screen" id="screen-profile">
   <div class="sec" style="margin-top:14px">Профиль</div>
@@ -1019,6 +1023,16 @@
   <div class="field-error" id="pPhoneError">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
     <span id="pPhoneErrorText"></span>
+  </div>
+  <!-- Подтверждение номера через Telegram: номер приходит от самого Telegram,
+       после этого приложение показывает брони и историю этой карточки. -->
+  <div id="phoneVerifyBox" class="verify-box" style="display:none">
+    <div class="verify-text" id="phoneVerifyText">Подтвердите номер через Telegram — так мы покажем ваши брони и никто другой не сможет их увидеть.</div>
+    <button type="button" class="verify-btn" id="phoneVerifyBtn" onclick="verifyPhoneViaTelegram()">Подтвердить номер</button>
+  </div>
+  <div id="phoneVerifiedNote" class="verified-note" style="display:none">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="5 12 10 17 19 7"/></svg>
+    <span>Номер подтверждён</span>
   </div>
 
   <div class="form-row form-group">
@@ -1314,6 +1328,10 @@
     <textarea class="form-input" id="rvComment" placeholder="Что понравилось, что стоит исправить..."></textarea>
   </div>
 
+  <div class="form-alert" id="reviewAlert">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
+    <span id="reviewAlertText"></span>
+  </div>
   <button class="btn-book" id="reviewSubmitBtn" onclick="submitReview()">Отправить отзыв</button>
   <div style="height:16px"></div>
 </div>
@@ -1325,7 +1343,7 @@
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg>
     </div>
     <div class="booking-overlay-title">Бронь отправлена</div>
-    <div class="booking-overlay-sub">Ожидайте подтверждения</div>
+    <div class="booking-overlay-sub" id="bookingOverlaySub">Ожидайте подтверждения</div>
   </div>
 </div>
 
@@ -1355,7 +1373,57 @@
 
 <script>
   const tg = window.Telegram?.WebApp;
-  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#140B00'); tg.setBackgroundColor('#140B00'); }
+  // Цвет шапки/фона Telegram = фон приложения (#1E1004), раньше был темнее и шапка выделялась полосой.
+  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#1E1004'); tg.setBackgroundColor('#1E1004'); }
+
+  // ─── Безопасный вывод текста ─────────────────────
+  // Всё, что пришло с сервера или от гостя, вставляем в разметку только через
+  // escHtml — иначе текст брони вида <img onerror=...> выполнялся как код.
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // ─── Запросы к серверу с подписью Telegram ───────
+  // Сервер узнаёт гостя только по подписанным Telegram данным (initData),
+  // а не по номеру телефона из запроса. Вне Telegram подписи нет — тогда
+  // работает только бронь, а статус и история недоступны.
+  function hasTelegramAuth() { return !!(tg && tg.initData); }
+  function apiFetch(path, opts = {}) {
+    const headers = Object.assign({}, opts.headers || {});
+    if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    if (hasTelegramAuth()) headers['X-Telegram-Init-Data'] = tg.initData;
+    return fetch(`${PROXY_BASE}${path}`, Object.assign({}, opts, { headers }));
+  }
+
+  // ─── Время заведения: Москва, сутки до 06:00 ─────
+  // Раньше бралось время телефона: у гостя в другом часовом поясе всё
+  // съезжало, а с 00:00 до 01:00 показывалось «Сейчас закрыто» и нельзя
+  // было забронировать на 00:30.
+  function mskNowParts() {
+    const d = new Date(Date.now() + 3 * 3600 * 1000);
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), h: d.getUTCHours(), min: d.getUTCMinutes(), ts: d.getTime() };
+  }
+  function isoFromUTCDate(dt) { return dt.toISOString().slice(0, 10); }
+  function addDaysISO(iso, n) {
+    const dt = new Date(iso + 'T00:00:00Z');
+    dt.setUTCDate(dt.getUTCDate() + n);
+    return isoFromUTCDate(dt);
+  }
+  // «Сегодня» по-барному: до 06:00 утра ещё идёт вчерашний вечер.
+  function venueTodayStr() {
+    const p = mskNowParts();
+    const iso = `${p.y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+    return p.h < 6 ? addDaysISO(iso, -1) : iso;
+  }
+  // Реальная (календарная) дата и момент брони: 00:30 на «30 сентября» — это 1 октября.
+  function bookingMoment(venueDateISO, time) {
+    const [hh, mm] = time.split(':').map(Number);
+    const calISO = hh < 6 ? addDaysISO(venueDateISO, 1) : venueDateISO;
+    const ts = new Date(`${calISO}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00Z`).getTime();
+    return { calISO, ts };
+  }
 
   // ── Подстраховка для колеса мыши в десктопном приложении Telegram ──
   // В десктопном клиенте Telegram (само приложение, не web.telegram.org) есть
@@ -1451,10 +1519,20 @@
       body = raw.slice(0, p) + raw.slice(p + RU_PHONE_PREFIX.length);
       bodyCursor = cursor <= p ? cursor : Math.max(p, cursor - RU_PHONE_PREFIX.length);
     }
+    // Полный номер набрали/подставили поверх «+7» (выделили всё и ввели, автозаполнение):
+    // в тексте оказался второй «+7» — он тоже не часть номера. Раньше выходило
+    // «+7 (790) 077-76-65» вместо «+7 (900) 777-66-55».
+    const p2 = body.indexOf(RU_PHONE_PREFIX);
+    if (p2 >= 0) {
+      body = body.slice(0, p2) + body.slice(p2 + RU_PHONE_PREFIX.length);
+      bodyCursor = bodyCursor <= p2 ? bodyCursor : Math.max(p2, bodyCursor - RU_PHONE_PREFIX.length);
+    }
     let digits = body.replace(/\D/g, '');
     let before = body.slice(0, bodyCursor).replace(/\D/g, '').length;
     // Поле было пустым/стёрто целиком, и вставили полный номер — «8…»/«7…» в начале лишние
     if (p < 0 && digits.length >= 11 && (digits[0] === '7' || digits[0] === '8')) { digits = digits.slice(1); before = Math.max(0, before - 1); }
+    // После «+7» разом появилось 11 цифр с «8»/«7» в начале — это номер целиком («+7» + «8 900 …»)
+    if (p >= 0 && digits.length === 11 && !(input.dataset.phoneDigits || '') && (digits[0] === '7' || digits[0] === '8')) { digits = digits.slice(1); before = Math.max(0, before - 1); }
 
     // Стёрли скобку/пробел/дефис — цифры не изменились; тогда стираем цифру перед ними,
     // иначе форматирование вернёт знак обратно и Backspace «застрянет».
@@ -1527,31 +1605,19 @@
     el.dispatchEvent(new Event('change', { bubbles: true }));
   });
 
-  // Локальная дата в формате YYYY-MM-DD — не toISOString (тот берёт UTC и в первые
-  // часы после полуночи по местному времени ещё показывает "вчера").
-  function localDateStr(d = new Date()) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
   // Set today as min date for booking
-  const today = localDateStr();
+  const today = venueTodayStr();
   document.getElementById('bDate').value = today;
   document.getElementById('bDate').min = today;
 
   // Если выбрана сегодняшняя дата — подсказываем браузеру не показывать прошедшее время
   // (это только UX-подсказка, окончательная проверка всё равно в sendBooking)
+  // Подсказку min на поле времени больше не ставим: вечером 00:30 «меньше»
+  // текущего времени, и браузер не давал выбрать бронь после полуночи.
+  // Все проверки — в sendBooking. Здесь только держим минимальную дату.
   function updateTimeMin() {
-    const dateField = document.getElementById('bDate');
-    const timeField = document.getElementById('bTime');
-    if (dateField.value === localDateStr()) {
-      const now = new Date();
-      timeField.min = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    } else {
-      timeField.removeAttribute('min');
-    }
+    document.getElementById('bTime').removeAttribute('min');
+    document.getElementById('bDate').min = venueTodayStr();
   }
   document.getElementById('bDate').addEventListener('change', updateTimeMin);
   updateTimeMin();
@@ -1582,8 +1648,9 @@
 
   // Status
   function checkStatus() {
-    const h = new Date().getHours();
-    const open = h >= 13;
+    // Открыты 13:00–01:00 по Москве
+    const h = mskNowParts().h;
+    const open = h >= 13 || h < 1;
     if (!open) {
       document.getElementById('statusDot').classList.add('closed');
       document.querySelector('.status-badge').classList.add('closed');
@@ -1592,7 +1659,7 @@
   }
 
   // Navigation
-  const screens = ['home','book','events','event','about','faq','menu','bar','vip','profile','admin','location','review'];
+  const screens = ['home','book','events','event','about','faq','menu','bar','vip','profile','location','review'];
   function showScreen(name) {
     if (name !== 'bar' && typeof storiesState !== 'undefined' && storiesState.bar.timer) {
       clearTimeout(storiesState.bar.timer);
@@ -1627,7 +1694,7 @@
     // в форме молча остаётся его дата вместо сегодняшней
     const dateField = document.getElementById('bDate');
     const timeField = document.getElementById('bTime');
-    const today = localDateStr();
+    const today = venueTodayStr();
     dateField.value = today;
     dateField.min = today;
     timeField.value = '20:00';
@@ -1703,7 +1770,7 @@
 
     // Атрибут min на поле — это только подсказка браузеру, её можно обойти
     // (ручной ввод, некоторые версии Android/iOS). Проверяем дату явно.
-    const todayStr = localDateStr();
+    const todayStr = venueTodayStr();
     if (date < todayStr) {
       showDateError('Нельзя забронировать прошедшую дату — пожалуйста, выберите сегодня или позже');
       document.getElementById('bDate').focus();
@@ -1714,20 +1781,6 @@
       showTimeError('Пожалуйста, укажите время брони');
       document.getElementById('bTime').focus();
       return;
-    }
-
-    // Дата — сегодня, но выбранное время уже прошло (браузер не мешает выбрать
-    // в <input type="time"> любой час, даже задним числом на текущий день).
-    if (date === todayStr) {
-      const now = new Date();
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      const [th, tm] = time.split(':').map(Number);
-      const selectedMinutes = th * 60 + tm;
-      if (selectedMinutes <= nowMinutes) {
-        showTimeError('Нельзя забронировать на прошедшее время. Выберите более позднее время.');
-        document.getElementById('bTime').focus();
-        return;
-      }
     }
 
     const room = bookingContext && bookingContext.type === 'vip' ? bookingContext.room : null;
@@ -1745,65 +1798,98 @@
         return;
       }
     }
+
+    // Время уже прошло? Считаем по Москве и с учётом ночи: 00:30 на выбранную
+    // дату — это следующая календарная дата (сутки заведения до 06:00).
+    const moment = bookingMoment(date, time);
+    if (moment.ts <= mskNowParts().ts) {
+      showTimeError('Это время уже прошло. Выберите более позднее время.');
+      document.getElementById('bTime').focus();
+      return;
+    }
+
     const bookingKind = room ? 'vip' : (eventName ? `event:${eventName}` : 'table');
 
-    // Проверяем — нет ли у этого номера уже активной брони ТОГО ЖЕ ТИПА
-    // (стол, VIP и мероприятия не мешают друг другу — можно бронировать одновременно)
-    if (!forceNew) {
+    // Проверяем — нет ли у гостя уже активной брони ТОГО ЖЕ ТИПА
+    // (стол, VIP и мероприятия не мешают друг другу — можно бронировать одновременно).
+    // Смотрим свои брони по Telegram-аккаунту; вне Telegram проверки нет.
+    if (!forceNew && hasTelegramAuth()) {
       btn.disabled = true;
       btn.style.opacity = '0.6';
       const checkingText = btn.innerHTML;
       btn.innerHTML = 'Проверяем...';
 
-      const statusData = await fetchBookingStatus(phone, bookingKind);
+      const me = await fetchMe();
 
       btn.disabled = false;
       btn.style.opacity = '1';
       btn.innerHTML = checkingText;
 
-      if (statusData.status === 'pending' || statusData.status === 'confirmed') {
-        showDuplicateBookingWarning(statusData, phone);
+      const same = me && me.bound ? (me.active || []).find(b => b.kind === bookingKind) : null;
+      if (same) {
+        showDuplicateBookingWarning(same);
         return;
       }
     }
-
-    const dateStr = date ? formatDateLocal(date) : '—';
-    const user = getTelegramUser();
 
     btn.disabled = true;
     btn.style.opacity = '0.6';
     const originalText = btn.innerHTML;
     btn.innerHTML = 'Отправляем...';
 
-    // Сохраняем бронь + бот сам пришлёт подтверждение гостю и уведомление администратору
+    // Сохраняем бронь + бот сам пришлёт подтверждение гостю и уведомление администратору.
+    // Раньше ответ сервера не проверялся: при ошибке или без сети гость видел
+    // «Бронь отправлена», а бронь терялась.
+    let result = null;
+    let errorText = '';
     try {
-      await fetch('https://notion-proxy-na-kryishe-production.up.railway.app/api/booking', {
+      const res = await apiFetch('/api/booking', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name, phone, date: dateStr, dateISO: date, time, guests, comment, room, eventName,
-          telegramId: user?.id || null,
-          telegramUsername: user?.username || null
-        })
+        body: JSON.stringify({ name, phone, dateISO: moment.calISO, time, guests, comment, room, eventName })
       });
-    } catch {}
+      if (res.ok) result = await res.json().catch(() => ({}));
+      else if (res.status === 429) errorText = 'Слишком много броней подряд. Попробуйте через несколько минут.';
+      else errorText = 'Не удалось отправить бронь. Попробуйте ещё раз.';
+    } catch {
+      errorText = 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
+    }
 
-    // Сохраняем телефон локально — иначе статус брони не найдётся, если гость не заполнял профиль
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = originalText;
+
+    if (!result) {
+      document.getElementById('bookAlertText').textContent = errorText;
+      document.getElementById('bookAlert').style.display = 'flex';
+      haptic('error');
+      return;
+    }
+
+    // Сохраняем имя и телефон локально — для автоподстановки в следующий раз
     try {
       const existing = getSavedProfile() || {};
       localStorage.setItem('nk_profile', JSON.stringify({ ...existing, name, phone }));
     } catch {}
 
+    const sub = document.getElementById('bookingOverlaySub');
+    if (sub) {
+      sub.textContent = result.needsVerify
+        ? 'Ожидайте подтверждения. Чтобы видеть статус брони здесь, подтвердите номер в профиле.'
+        : 'Ожидайте подтверждения';
+    }
+    haptic('success');
     showBookingOverlay();
     bookingContext = null;
     const banner = document.getElementById('bookingContextBanner');
     if (banner) banner.style.display = 'none';
+    document.getElementById('bComment').value = '';
     window.scrollTo(0,0);
     updateBookingDot();
+  }
 
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    btn.innerHTML = originalText;
+  // Вибрация Telegram на успех/ошибку (вне Telegram просто ничего не делает)
+  function haptic(type) {
+    try { tg?.HapticFeedback?.notificationOccurred(type); } catch {}
   }
 
   let bookingOverlayTimer = null;
@@ -2208,7 +2294,6 @@
     if (name === 'bar') initStories('bar');
     if (name === 'vip') initStories('vip');
     if (name === 'profile') loadProfile();
-    if (name === 'admin') loadAdminBookings();
   };
 
   // ─── PROFILE ─────────────────────────────────────
@@ -2234,12 +2319,86 @@
     showScreen('profile');
   }
 
+  // ─── «Я» С СЕРВЕРА ────────────────────────────────
+  // Карточка гостя, привязанная к его Telegram-аккаунту: имя, телефон, ДР,
+  // история и активные брони. null — ошибка сети/сервера.
+  async function fetchMe() {
+    if (!hasTelegramAuth()) return { bound: false, noAuth: true };
+    try {
+      const res = await apiFetch('/api/me');
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  const CALENDAR_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>';
+  const X_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>';
+
+  function setAvatarImage(el, url) {
+    const img = new Image();
+    img.referrerPolicy = 'no-referrer';
+    img.alt = '';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    img.onload = () => { el.textContent = ''; el.appendChild(img); };
+    img.onerror = () => {};
+    img.src = url;
+  }
+
+  function setPhoneField(phone) {
+    const field = document.getElementById('pPhone');
+    const digits = ruPhoneNationalDigits(phone);
+    if (digits.length === 10) {
+      field.value = ruPhoneFormat(digits);
+      field.dataset.phoneDigits = digits;
+    } else if (phone) {
+      field.value = phone;
+    }
+  }
+
+  function setVerifyState(state, text) {
+    // state: 'bound' — карточка привязана; 'ask' — предложить подтверждение; 'none' — скрыть всё
+    const box = document.getElementById('phoneVerifyBox');
+    const note = document.getElementById('phoneVerifiedNote');
+    box.style.display = state === 'ask' ? 'block' : 'none';
+    note.style.display = state === 'bound' ? 'flex' : 'none';
+    if (text) document.getElementById('phoneVerifyText').textContent = text;
+  }
+
+  function applyMe(me) {
+    if (!me || !me.bound) return;
+    if (me.phone) setPhoneField(me.phone);
+    if (me.name) document.getElementById('pName').value = me.name;
+    if (me.birthday) {
+      const parts = me.birthday.split('-');
+      if (parts.length === 3) {
+        document.getElementById('pBirthMonth').value = parts[1];
+        document.getElementById('pBirthDay').value = parts[2];
+      }
+    }
+    try {
+      const saved = getSavedProfile() || {};
+      localStorage.setItem('nk_profile', JSON.stringify({
+        ...saved,
+        name: me.name || saved.name,
+        phone: document.getElementById('pPhone').value.trim() || saved.phone,
+        day: document.getElementById('pBirthDay').value || saved.day,
+        month: document.getElementById('pBirthMonth').value || saved.month
+      }));
+    } catch {}
+    setVerifyState('bound');
+    renderHistory(me);
+    updateBookingDotFrom(me);
+  }
+
   async function loadProfile() {
     const user = getTelegramUser();
     const avatarEl = document.getElementById('profileAvatar');
     const nameEl = document.getElementById('profileName');
     const usernameEl = document.getElementById('profileUsername');
     const nameField = document.getElementById('pName');
+    const historyEl = document.getElementById('profileHistory');
 
     const telegramFullName = user ? ([user.first_name, user.last_name].filter(Boolean).join(' ') || 'Гость') : 'Гость';
 
@@ -2247,12 +2406,8 @@
       nameEl.textContent = telegramFullName;
       usernameEl.textContent = user.username ? '@' + user.username : '';
       avatarEl.textContent = telegramFullName.charAt(0).toUpperCase();
-      if (user.photo_url) {
-        avatarEl.innerHTML = `<img src="${user.photo_url}" style="width:100%;height:100%;object-fit:cover;">`;
-      }
-      loadFreshAvatar(user.id, url => {
-        avatarEl.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">`;
-      });
+      if (user.photo_url) setAvatarImage(avatarEl, user.photo_url);
+      loadFreshAvatar(url => setAvatarImage(avatarEl, url));
     } else {
       nameEl.textContent = 'Гость';
       usernameEl.textContent = '';
@@ -2263,8 +2418,6 @@
     if (!nameField.value) {
       nameField.value = (saved && saved.name) ? saved.name : telegramFullName;
     }
-
-    // Подставляем ранее сохранённый телефон и дату рождения из памяти устройства
     const phoneField = document.getElementById('pPhone');
     if ((!phoneField.value || phoneField.value === '+7') && saved && saved.phone) {
       phoneField.value = saved.phone;
@@ -2272,80 +2425,116 @@
     if (saved && saved.day) document.getElementById('pBirthDay').value = saved.day;
     if (saved && saved.month) document.getElementById('pBirthMonth').value = saved.month;
 
-    // Пытаемся подтянуть уже сохранённые данные по номеру телефона (если введён)
-    const phone = phoneField.value.trim();
-    if (phone && phone !== '+7') {
-      await fetchGuestData(phone);
-    } else {
-      document.getElementById('profileHistory').textContent = 'Укажите телефон и сохраните — тогда покажем историю броней';
-      document.getElementById('profileHistory').className = 'no-data';
+    if (!hasTelegramAuth()) {
+      setVerifyState('none');
+      historyEl.textContent = 'История броней доступна в приложении внутри Telegram';
+      historyEl.className = 'no-data';
+      return;
     }
+
+    historyEl.textContent = 'Загружаю...';
+    historyEl.className = 'no-data';
+    const me = await fetchMe();
+    if (!me) {
+      historyEl.innerHTML = 'Не удалось загрузить историю<br><br><button class="verify-btn" style="max-width:200px" onclick="loadProfile()">Повторить</button>';
+      historyEl.className = 'no-data';
+      return;
+    }
+    if (me.bound) {
+      applyMe(me);
+      return;
+    }
+    setVerifyState('ask', 'Подтвердите номер через Telegram — так мы покажем ваши брони и никто другой не сможет их увидеть.');
+    historyEl.textContent = 'Подтвердите номер или сохраните профиль — тогда здесь появятся ваши брони';
+    historyEl.className = 'no-data';
   }
 
-  async function fetchGuestData(phone) {
-    const historyEl = document.getElementById('profileHistory');
-    historyEl.textContent = 'Загружаю...';
-    try {
-      const res = await fetch(`${PROXY_BASE}/api/guest?phone=${encodeURIComponent(phone)}`);
-      const guest = await res.json();
+  // Запись истории: "ISO|текст|тип|uid|гостей|комментарий|стол" (+ " (подтверждено)"/" (отменено)")
+  let historyEntries = [];
 
-      if (!guest) {
-        historyEl.textContent = 'У вас пока нет бронирований';
-        historyEl.className = 'no-data';
+  function renderHistory(me) {
+    const historyEl = document.getElementById('profileHistory');
+    const list = String(me.history || '').split(',').map(s => s.trim()).filter(Boolean).reverse();
+    if (!list.length) {
+      historyEl.textContent = 'У вас пока нет бронирований';
+      historyEl.className = 'no-data';
+      return;
+    }
+    historyEntries = [];
+    let activeCount = 0;
+    const itemsHtml = list.map(d => {
+      const cancelled = d.includes('(отменено)');
+      const confirmed = d.includes('(подтверждено)');
+      const cleanEntry = d.replace(' (отменено)', '').replace(' (подтверждено)', '');
+      const expired = entryExpired(cleanEntry);
+      const active = !cancelled && !expired;
+      if (active) activeCount++;
+      const idx = historyEntries.push(cleanEntry) - 1;
+      const badge = cancelled
+        ? '<span class="history-badge off">Отменена</span>'
+        : expired
+          ? '<span class="history-badge past">Прошла</span>'
+          : confirmed
+            ? '<span class="history-badge ok">Подтверждена</span>'
+            : '<span class="history-badge wait">Ждёт подтверждения</span>';
+      return `<div class="history-item ${cancelled ? 'cancelled' : ''}">
+        <div class="history-icon" style="color:${active ? 'var(--accent)' : 'var(--text-muted)'}">${CALENDAR_ICON}</div>
+        <div>
+          <div class="history-text">${escHtml(entryDisplay(cleanEntry))}</div>
+          ${badge}
+        </div>
+        <div style="flex:1"></div>
+        ${active ? `<button class="history-cancel-btn" aria-label="Отменить бронь" onclick="openCancelConfirm(historyEntries[${idx}], loadProfile)">${X_ICON}</button>` : ''}
+      </div>`;
+    }).join('');
+
+    historyEl.innerHTML =
+      `<div class="history-summary">
+        <span class="sec" style="margin:0">Ваши брони</span>
+        <span class="history-count-badge">${activeCount} активных</span>
+      </div>` + itemsHtml;
+    historyEl.className = '';
+  }
+
+  // ─── ПОДТВЕРЖДЕНИЕ НОМЕРА ЧЕРЕЗ TELEGRAM ─────────
+  function verifyPhoneViaTelegram() {
+    const btn = document.getElementById('phoneVerifyBtn');
+    if (!tg || typeof tg.requestContact !== 'function') {
+      setVerifyState('ask', 'Ваша версия Telegram не умеет делиться номером. Обновите Telegram и попробуйте ещё раз.');
+      return;
+    }
+    btn.disabled = true;
+    tg.requestContact(async (shared, response) => {
+      if (!shared) {
+        btn.disabled = false;
+        setVerifyState('ask', 'Без подтверждения номера мы не сможем показать ваши брони. Можно попробовать ещё раз.');
         return;
       }
-
-      if (guest.birthday) {
-        const parts = guest.birthday.split('-');
-        if (parts.length === 3) {
-          document.getElementById('pBirthMonth').value = parts[1];
-          document.getElementById('pBirthDay').value = parts[2];
-        }
+      btn.textContent = 'Проверяем...';
+      try {
+        const res = await apiFetch('/api/verify-contact', {
+          method: 'POST',
+          body: JSON.stringify({ response: response && response.response ? response.response : '', name: document.getElementById('pName').value.trim() })
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const me = await res.json();
+        haptic('success');
+        applyMe(me);
+      } catch {
+        haptic('error');
+        setVerifyState('ask', 'Не получилось подтвердить номер. Попробуйте ещё раз через минуту.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Подтвердить номер';
       }
-
-      if (guest.history) {
-        const dates = guest.history.split(',').map(s => s.trim()).filter(Boolean).reverse();
-        const activeCount = dates.filter(d => !d.includes('(отменено)')).length;
-
-        const calendarIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>';
-        const xIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>';
-
-        const itemsHtml = dates.map(d => {
-          const cancelled = d.includes('(отменено)');
-          const cleanEntry = d.replace(' (отменено)', '').replace(' (подтверждено)', '');
-          const expired = entryExpired(cleanEntry);
-          const showCancelBtn = !cancelled && !expired;
-          return `<div class="history-item ${cancelled ? 'cancelled' : ''}">
-            <div class="history-icon" style="color:${cancelled ? 'var(--text-muted)' : 'var(--accent)'}">${calendarIcon}</div>
-            <div>
-              <div class="history-text">${entryDisplay(cleanEntry)}</div>
-              ${cancelled ? '<div class="history-status">Отменено</div>' : ''}
-            </div>
-            <div style="flex:1"></div>
-            ${showCancelBtn ? `<button class="history-cancel-btn" onclick="openCancelConfirm('${phone}','${cleanEntry.replace(/'/g,"\\'")}')">${xIcon}</button>` : ''}
-          </div>`;
-        }).join('');
-
-        historyEl.innerHTML =
-          `<div class="history-summary">
-            <span class="sec" style="margin:0">Ваши брони</span>
-            <span class="history-count-badge">${activeCount} активных</span>
-          </div>` + itemsHtml;
-        historyEl.className = '';
-      } else {
-        historyEl.textContent = 'У вас пока нет бронирований';
-        historyEl.className = 'no-data';
-      }
-    } catch {
-      historyEl.textContent = 'Не удалось загрузить историю';
-      historyEl.className = 'no-data';
-    }
+    });
   }
 
+  // ─── ОТМЕНА БРОНИ ────────────────────────────────
   let pendingCancel = null;
 
-  function openCancelConfirm(phone, entry, refreshFn) {
-    pendingCancel = { phone, entry, refreshFn: refreshFn || (() => fetchGuestData(phone)) };
+  function openCancelConfirm(entry, refreshFn) {
+    pendingCancel = { entry, refreshFn: refreshFn || loadProfile };
     document.getElementById('cancelConfirmDate').textContent = entryDisplay(entry);
     document.getElementById('cancelAlert').style.display = 'none';
     document.getElementById('cancelConfirmOverlay').classList.add('show');
@@ -2357,46 +2546,51 @@
   }
 
   // Модал закрываем только при успехе — при ошибке гость остаётся в нём
-  // и видит баннер, а не проваливается в системный alert() без контекста.
+  // и видит баннер. Раньше ответ сервера не проверялся и модал закрывался всегда.
   async function confirmCancelBooking() {
     if (!pendingCancel) return;
-    const { phone, entry, refreshFn } = pendingCancel;
+    const { entry, refreshFn } = pendingCancel;
     const btn = document.getElementById('cancelConfirmBtn');
     document.getElementById('cancelAlert').style.display = 'none';
     btn.disabled = true;
     const originalText = btn.textContent;
     btn.textContent = 'Отменяем...';
+    let errorText = '';
     try {
-      await fetch(`${PROXY_BASE}/api/booking/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, entry })
-      });
-      btn.disabled = false;
-      btn.textContent = originalText;
-      closeCancelConfirm();
-      if (refreshFn) refreshFn();
+      const res = await apiFetch('/api/booking/cancel', { method: 'POST', body: JSON.stringify({ entry }) });
+      if (res.status === 404) errorText = 'Эта бронь уже отменена или не найдена.';
+      else if (!res.ok) errorText = 'Не удалось отменить бронь. Попробуйте позже.';
     } catch {
-      btn.disabled = false;
-      btn.textContent = originalText;
-      document.getElementById('cancelAlertText').textContent = 'Не удалось отменить бронь. Попробуйте позже.';
-      document.getElementById('cancelAlert').style.display = 'flex';
+      errorText = 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
     }
+    btn.disabled = false;
+    btn.textContent = originalText;
+    if (errorText) {
+      haptic('error');
+      document.getElementById('cancelAlertText').textContent = errorText;
+      document.getElementById('cancelAlert').style.display = 'flex';
+      return;
+    }
+    haptic('success');
+    closeCancelConfirm();
+    if (refreshFn) refreshFn();
+    updateBookingDot();
   }
 
   // ─── ПРЕДУПРЕЖДЕНИЕ О ПОВТОРНОЙ БРОНИ ─────────────
 
   let currentDuplicateData = null;
 
-  function showDuplicateBookingWarning(statusData, phone) {
-    currentDuplicateData = { ...statusData, phone };
-    const isConfirmed = statusData.status === 'confirmed';
+  function showDuplicateBookingWarning(booking) {
+    currentDuplicateData = booking;
+    const isConfirmed = booking.status === 'confirmed';
+    const when = escHtml(booking.entry);
     document.getElementById('duplicateBookingTitle').textContent = isConfirmed
       ? 'Бронь уже подтверждена'
       : 'Бронь ожидает подтверждения';
     document.getElementById('duplicateBookingSub').innerHTML = isConfirmed
-      ? `Ваша бронь на <b>${statusData.entry}</b> уже подтверждена администратором. Ждём вас!`
-      : `Вы уже отправили бронь на <b>${statusData.entry}</b>. Она ещё ожидает подтверждения администратора — дождитесь ответа.`;
+      ? `Ваша бронь на <b>${when}</b> уже подтверждена администратором. Ждём вас!`
+      : `Вы уже отправили бронь на <b>${when}</b>. Она ещё ожидает подтверждения администратора — дождитесь ответа.`;
     document.getElementById('duplicateBookingOverlay').classList.add('show');
   }
 
@@ -2407,45 +2601,11 @@
   function cancelFromDuplicateWarning() {
     if (!currentDuplicateData) return;
     closeDuplicateWarning();
-    openCancelConfirm(currentDuplicateData.phone, currentDuplicateData.raw, updateBookingDot);
+    openCancelConfirm(currentDuplicateData.raw, updateBookingDot);
   }
 
-  // ─── ADMIN: СПИСОК И ОТМЕНА БРОНЕЙ ────────────────
-
-  async function loadAdminBookings() {
-    const el = document.getElementById('adminBookingsList');
-    el.textContent = 'Загружаю...';
-    el.className = 'no-data';
-    try {
-      const res = await fetch(`${PROXY_BASE}/api/admin/bookings`);
-      const bookings = await res.json();
-
-      if (!bookings.length) {
-        el.textContent = 'Активных броней нет';
-        el.className = 'no-data';
-        return;
-      }
-
-      const calendarIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>';
-      const xIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>';
-
-      el.innerHTML = bookings.map(b => `
-        <div class="history-item">
-          <div class="history-icon" style="color:var(--accent)">${calendarIcon}</div>
-          <div>
-            <div class="history-text">${b.display || entryDisplay(b.entry)}</div>
-            <div class="history-status" style="color:var(--text-sub)">${b.name} · ${b.phone}</div>
-          </div>
-          <div style="flex:1"></div>
-          <button class="history-cancel-btn" onclick="openCancelConfirm('${b.phone}','${b.entry.replace(/'/g,"\\'")}', loadAdminBookings)">${xIcon}</button>
-        </div>
-      `).join('');
-      el.className = '';
-    } catch {
-      el.textContent = 'Не удалось загрузить список';
-      el.className = 'no-data';
-    }
-  }
+  // Экран «админки» (?admin=1) удалён: он показывал имена и телефоны всех
+  // гостей без проверки. Брони персонал ведёт в стафф-приложении.
 
   // Ошибки формы профиля — тот же паттерн, что и в брони: подсветка поля + пояснение
   // под ним + баннер у кнопки, вместо системного alert().
@@ -2465,7 +2625,9 @@
   }
   document.getElementById('pPhone').addEventListener('input', clearProfileErrors);
 
+  let profileSaving = false;
   async function saveProfile() {
+    if (profileSaving) return; // двойной тап не создаёт две карточки
     const phone = document.getElementById('pPhone').value.trim();
     const day = document.getElementById('pBirthDay').value;
     const month = document.getElementById('pBirthMonth').value;
@@ -2473,39 +2635,51 @@
 
     clearProfileErrors();
 
-    if (!phone || phone === '+7') {
-      showProfileError('Укажите номер телефона', 'pPhone');
+    if (!phone || phone === '+7' || phone.replace(/\D/g, '').length < 11) {
+      showProfileError('Укажите номер телефона полностью', 'pPhone');
       document.getElementById('pPhone').focus();
       return;
     }
 
-    const user = getTelegramUser();
-    const username = user?.username || '';
+    // Локально сохраняем в любом случае — для автоподстановки в форму брони
+    try {
+      localStorage.setItem('nk_profile', JSON.stringify({ name: fullName, phone, day, month }));
+    } catch {}
+
+    if (!hasTelegramAuth()) {
+      showProfileError('Профиль сохраняется только в приложении внутри Telegram. Данные для брони запомнили на этом устройстве.');
+      return;
+    }
 
     let birthday = null;
     if (day && month) {
       // Год условный, важны только день+месяц — но обязательно берём високосный (2000),
-      // иначе "29 февраля" будет невалидной датой в те годы, когда currentYear-25 не високосный
+      // иначе "29 февраля" будет невалидной датой
       birthday = `2000-${month}-${day}`;
     }
 
+    profileSaving = true;
     try {
-      await fetch(`${PROXY_BASE}/api/profile`, {
+      const res = await apiFetch('/api/profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: fullName, username, phone, birthday, telegramId: user?.id || null })
+        body: JSON.stringify({ name: fullName, phone, birthday })
       });
-
-      // Сохраняем локально для автоподстановки в форму бронирования и профиля
-      try {
-        localStorage.setItem('nk_profile', JSON.stringify({ name: fullName, phone, day, month }));
-      } catch {}
-
+      if (res.status === 409) {
+        haptic('warning');
+        setVerifyState('ask', 'Этот номер уже есть в нашей базе. Подтвердите через Telegram, что он ваш, — и мы покажем ваши брони.');
+        showProfileError('Нужно подтвердить номер — кнопка выше');
+        return;
+      }
+      if (!res.ok) throw new Error(String(res.status));
+      const me = await res.json();
+      haptic('success');
       showProfileSavedOverlay();
-
-      fetchGuestData(phone);
+      applyMe(me);
     } catch {
+      haptic('error');
       showProfileError('Не удалось сохранить. Попробуйте ещё раз.');
+    } finally {
+      profileSaving = false;
     }
   }
 
@@ -2531,48 +2705,45 @@
   // ─── АВАТАР В ШАПКЕ ───────────────────────────────
 
   // initDataUnsafe.user.photo_url приходит от Telegram-клиента и может подолгу не обновляться
-  // после смены фото в профиле (тот же кэш WebView, что мы уже ловили с другими полями initData).
-  // Показываем его сразу (чтобы не мигать пустым местом), а следом тихо спрашиваем актуальное
-  // фото у нашего прокси (он идёт напрямую в Bot API) и подменяем, если оно отличается.
-  async function loadFreshAvatar(telegramId, onUrl) {
-    if (!telegramId) return;
-    try {
-      const res = await fetch(`${PROXY_BASE}/api/guest/photo?telegramId=${telegramId}`);
-      if (!res.ok) return;
-      const { photoUrl } = await res.json();
-      if (photoUrl) onUrl(photoUrl);
-    } catch {}
+  // после смены фото в профиле. Показываем его сразу, а следом берём актуальное фото
+  // у нашего сервера — он отдаёт саму картинку (раньше отдавал ссылку с токеном бота).
+  let freshAvatarUrl = null;
+  let freshAvatarPromise = null;
+  function loadFreshAvatar(onUrl) {
+    if (!hasTelegramAuth()) return;
+    if (!freshAvatarPromise) {
+      freshAvatarPromise = (async () => {
+        try {
+          const res = await apiFetch('/api/guest/photo');
+          if (res.status !== 200) return null;
+          const blob = await res.blob();
+          if (!blob.size) return null;
+          freshAvatarUrl = URL.createObjectURL(blob);
+          return freshAvatarUrl;
+        } catch {
+          return null;
+        }
+      })();
+    }
+    freshAvatarPromise.then(url => { if (url) onUrl(url); });
   }
 
   function initHeaderAvatar() {
     const user = getTelegramUser();
     const el = document.getElementById('headerAvatar');
     if (!user) return;
-
-    const initial = (user.first_name || 'Г').charAt(0).toUpperCase();
-
-    function setPhoto(url) {
-      const img = new Image();
-      img.referrerPolicy = 'no-referrer';
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-      img.onload = () => { el.textContent = ''; el.appendChild(img); };
-      img.onerror = () => {};
-      img.src = url;
-    }
-
-    el.textContent = initial;
-    if (user.photo_url) setPhoto(user.photo_url);
-    loadFreshAvatar(user.id, setPhoto);
+    el.textContent = (user.first_name || 'Г').charAt(0).toUpperCase();
+    if (user.photo_url) setAvatarImage(el, user.photo_url);
+    loadFreshAvatar(url => setAvatarImage(el, url));
   }
 
   // ─── СТАТУС БРОНИ ─────────────────────────────────
 
-  // Записи хранятся как "ISO-дата|текст|тип" — разбираем на части
+  // Записи хранятся как "ISO-дата|текст|тип|..." — разбираем на части
   function parseEntryClient(raw) {
     if (!raw) return { iso: null, display: raw, kind: 'table' };
     const parts = raw.split('|');
-    if (parts.length >= 4) return { iso: parts[0], display: parts[1], kind: parts[2] };
-    if (parts.length === 3) return { iso: parts[0], display: parts[1], kind: parts[2] };
+    if (parts.length >= 3) return { iso: parts[0], display: parts[1], kind: parts[2] };
     if (parts.length === 2) return { iso: parts[0], display: parts[1], kind: 'table' };
     return { iso: null, display: parts[0], kind: 'table' };
   }
@@ -2582,44 +2753,21 @@
     return parseEntryClient(raw).display;
   }
 
-  // Проверяем, прошла ли уже дата брони (старые записи без ISO-даты тоже считаем прошедшими)
+  // Прошла ли бронь: по «барным суткам» Москвы (бронь на 00:30 1 октября —
+  // это вечер 30 сентября, она не «прошедшая» в 00:10). Старые записи без ISO — прошедшие.
   function entryExpired(raw) {
     const { iso } = parseEntryClient(raw);
-    if (!iso) return true;
-    const entryDate = iso.slice(0, 10);
-    const todayDate = new Date().toISOString().slice(0, 10);
-    return entryDate < todayDate;
+    if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return true;
+    let day = iso.slice(0, 10);
+    const hour = Number(iso.slice(11, 13));
+    if (iso.length >= 13 && hour < 6) day = addDaysISO(day, -1);
+    return day < venueTodayStr();
   }
 
-  async function fetchBookingStatus(phone, kind) {
-    try {
-      const url = `${PROXY_BASE}/api/booking/status?phone=${encodeURIComponent(phone)}` + (kind ? `&kind=${encodeURIComponent(kind)}` : '');
-      const res = await fetch(url);
-      return await res.json();
-    } catch {
-      return { status: 'none' };
-    }
-  }
-
-  async function fetchAllBookingStatuses(phone) {
-    try {
-      const res = await fetch(`${PROXY_BASE}/api/booking/status-all?phone=${encodeURIComponent(phone)}`);
-      return await res.json();
-    } catch {
-      return [];
-    }
-  }
-
-  function escapeJsStr(str) {
-    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-  }
-
-  async function updateBookingDot() {
-    const saved = getSavedProfile();
+  function updateBookingDotFrom(me) {
     const dot = document.getElementById('bookingStatusDot');
-    if (!saved || !saved.phone || !dot) return;
-
-    const list = await fetchAllBookingStatuses(saved.phone);
+    if (!dot) return;
+    const list = me && me.bound ? (me.active || []) : [];
     if (list.some(b => b.status === 'pending')) {
       dot.style.background = 'var(--accent)';
       dot.style.display = 'block';
@@ -2631,48 +2779,79 @@
     }
   }
 
-  let bookingStatusTimer = null;
+  async function updateBookingDot() {
+    if (!hasTelegramAuth()) return;
+    const me = await fetchMe();
+    if (me) updateBookingDotFrom(me);
+  }
+
+  const STATUS_MSG_STYLE = 'text-align:center;color:var(--text-muted);font-size:13px;line-height:1.5;';
+  const STATUS_BTN_STYLE = "width:100%;margin-top:8px;background:none;border:1px solid var(--border);border-radius:100px;padding:11px 14px;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-muted);cursor:pointer;font-family:'Inter',sans-serif;";
+  let statusList = [];
+  let lateArmed = null; // индекс брони, у которой «Опаздываю» нажали первый раз
+
+  function statusMessage(html) {
+    document.getElementById('bookingStatusContent').innerHTML = `<div style="${STATUS_MSG_STYLE}">${html}</div>
+      <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}margin-top:18px;">Закрыть</button>`;
+  }
 
   async function openBookingStatus() {
     const overlay = document.getElementById('bookingStatusOverlay');
-    const el = document.getElementById('bookingStatusContent');
-    const saved = getSavedProfile();
-
-    if (!saved || !saved.phone) {
-      el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;">У вас пока нет активных броней.<br>Забронируйте стол — статус появится здесь.</div>`;
-      overlay.classList.add('show');
-      bookingStatusTimer = setTimeout(() => overlay.classList.remove('show'), 10000);
-      return;
-    }
-
-    el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;">Загружаю...</div>`;
     overlay.classList.add('show');
+    lateArmed = null;
 
-    const list = await fetchAllBookingStatuses(saved.phone);
-
-    if (!list.length) {
-      el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;">У вас пока нет активных броней.</div>`;
-      bookingStatusTimer = setTimeout(() => overlay.classList.remove('show'), 10000);
+    if (!hasTelegramAuth()) {
+      statusMessage('Статус брони виден в приложении внутри Telegram.<br>Подтверждение также придёт от администратора.');
       return;
     }
 
-    const calendarIcon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>';
+    statusMessage('Загружаю...');
+    const me = await fetchMe();
+    if (!me) {
+      document.getElementById('bookingStatusContent').innerHTML = `<div style="${STATUS_MSG_STYLE}">Не удалось загрузить брони. Проверьте интернет.</div>
+        <button onclick="openBookingStatus()" style="${STATUS_BTN_STYLE}margin-top:18px;">Повторить</button>
+        <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}">Закрыть</button>`;
+      return;
+    }
+    updateBookingDotFrom(me);
+    if (!me.bound) {
+      document.getElementById('bookingStatusContent').innerHTML = `<div style="${STATUS_MSG_STYLE}">Пока не видим ваших броней.<br>Если вы бронировали на другой номер или по телефону — подтвердите номер в профиле.</div>
+        <button onclick="closeBookingStatus();openProfile();" style="${STATUS_BTN_STYLE}margin-top:18px;color:var(--accent);border-color:rgba(184,115,51,0.4);">Открыть профиль</button>
+        <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}">Закрыть</button>`;
+      return;
+    }
+    statusList = me.active || [];
+    if (!statusList.length) {
+      statusMessage('У вас пока нет активных броней.<br>Забронируйте стол — статус появится здесь.');
+      return;
+    }
+    renderStatusCards();
+  }
 
-    const cardsHtml = list.map(data => {
+  function lateKeyFor(b) {
+    return `nk_late_${b.raw}`.replace(/\s/g, '');
+  }
+
+  function renderStatusCards(errorIdx, errorText) {
+    const calendarIcon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>';
+    const clockIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
+
+    const cardsHtml = statusList.map((data, i) => {
       const isConfirmed = data.status === 'confirmed';
       const iconSvg = isConfirmed
         ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg>'
         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
 
-      const rawEsc = escapeJsStr(data.raw);
-      const lateKey = `nk_late_${saved.phone}_${data.raw}`.replace(/\s/g, '');
-      const alreadyLate = (() => { try { return localStorage.getItem(lateKey) === '1'; } catch { return false; } })();
+      const alreadyLate = (() => { try { return localStorage.getItem(lateKeyFor(data)) === '1'; } catch { return false; } })();
 
-      const clockIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-right:6px"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
-
-      const lateBlock = alreadyLate
-        ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px;">${clockIcon}Вы сообщили, что опаздываете на 15 минут</div>`
-        : `<button onclick="reportLate('${rawEsc}')" style="width:100%;margin-top:8px;background:var(--accent-dim);border:1px solid rgba(184,115,51,0.35);border-radius:100px;padding:9px 14px;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;">${clockIcon}Я опаздываю на 15 минут</button>`;
+      // «Опаздываю» — только в день брони; первый тап спрашивает подтверждение.
+      let lateBlock = '';
+      if (data.today) {
+        lateBlock = alreadyLate
+          ? `<div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px;">${clockIcon}Вы сообщили, что опаздываете на 15 минут</div>`
+          : `<button onclick="reportLate(${i})" style="width:100%;margin-top:8px;background:var(--accent-dim);border:1px solid rgba(184,115,51,0.35);border-radius:100px;padding:11px 14px;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:var(--accent);cursor:pointer;font-family:'Inter',sans-serif;">${clockIcon}${lateArmed === i ? 'Нажмите ещё раз, чтобы сообщить' : 'Я опаздываю на 15 минут'}</button>`;
+      }
+      const err = errorIdx === i ? `<div style="font-size:12px;color:var(--accent);margin-top:8px;text-align:center;">${escHtml(errorText)}</div>` : '';
 
       return `
         <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px;text-align:left;">
@@ -2682,59 +2861,60 @@
               <div style="font-family:'Jost',sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:${isConfirmed ? '#4ade80' : 'var(--accent)'};">
                 ${isConfirmed ? 'Подтверждена' : 'Ожидает подтверждения'}
               </div>
-              <div style="font-size:12px;color:var(--text-sub);margin-top:2px;">${calendarIcon}${data.entry}</div>
+              <div style="font-size:12px;color:var(--text-sub);margin-top:2px;">${calendarIcon}${escHtml(data.entry)}</div>
             </div>
           </div>
-          <button onclick="cancelFromStatus('${rawEsc}')" style="width:100%;background:none;border:1px solid var(--border);border-radius:100px;padding:9px 14px;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-muted);cursor:pointer;font-family:'Inter',sans-serif;">Отменить бронь</button>
+          <button onclick="cancelFromStatus(${i})" style="${STATUS_BTN_STYLE}margin-top:0;">Отменить бронь</button>
           ${lateBlock}
+          ${err}
         </div>
       `;
     }).join('');
 
-    el.innerHTML = `<div class="sec" style="margin:0 0 12px;text-align:left;">Ваши брони</div>${cardsHtml}`;
-
-    bookingStatusTimer = setTimeout(() => overlay.classList.remove('show'), 10000);
+    document.getElementById('bookingStatusContent').innerHTML =
+      `<div class="sec" style="margin:0 0 12px;text-align:left;">Ваши брони</div>${cardsHtml}
+       <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}">Закрыть</button>`;
   }
 
   const lateInProgress = new Set();
 
-  async function reportLate(rawEntry) {
-    const saved = getSavedProfile();
-    if (!saved || !saved.phone || !rawEntry) return;
-    if (lateInProgress.has(rawEntry)) return; // уже обрабатывается — игнорируем повторное нажатие
-    lateInProgress.add(rawEntry);
-
-    if (bookingStatusTimer) clearTimeout(bookingStatusTimer);
-
+  async function reportLate(i) {
+    const b = statusList[i];
+    if (!b || lateInProgress.has(i)) return;
+    if (lateArmed !== i) { // первый тап — просим подтвердить, чтобы не отправить случайно
+      lateArmed = i;
+      renderStatusCards();
+      return;
+    }
+    lateArmed = null;
+    lateInProgress.add(i);
+    let errorText = '';
     try {
-      await fetch(`${PROXY_BASE}/api/booking/late`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: saved.phone, entry: rawEntry })
-      });
-    } catch {}
-
-    try {
-      const lateKey = `nk_late_${saved.phone}_${rawEntry}`.replace(/\s/g, '');
-      localStorage.setItem(lateKey, '1');
-    } catch {}
-
-    lateInProgress.delete(rawEntry);
-    // Просто перерисовываем список — эта бронь покажет "опоздание отмечено"
-    openBookingStatus();
+      const res = await apiFetch('/api/booking/late', { method: 'POST', body: JSON.stringify({ entry: b.raw }) });
+      if (!res.ok) errorText = res.status === 400 ? 'Сообщить об опоздании можно только в день брони.' : 'Не удалось отправить. Попробуйте ещё раз.';
+    } catch {
+      errorText = 'Нет связи с сервером. Попробуйте ещё раз.';
+    }
+    lateInProgress.delete(i);
+    if (errorText) {
+      haptic('error');
+      renderStatusCards(i, errorText);
+      return;
+    }
+    try { localStorage.setItem(lateKeyFor(b), '1'); } catch {}
+    haptic('success');
+    renderStatusCards();
   }
 
   function closeBookingStatus() {
-    if (bookingStatusTimer) clearTimeout(bookingStatusTimer);
     document.getElementById('bookingStatusOverlay').classList.remove('show');
   }
 
-  function cancelFromStatus(rawEntry) {
-    const saved = getSavedProfile();
-    if (!saved || !saved.phone || !rawEntry) return;
-    if (bookingStatusTimer) clearTimeout(bookingStatusTimer);
+  function cancelFromStatus(i) {
+    const b = statusList[i];
+    if (!b) return;
     closeBookingStatus();
-    openCancelConfirm(saved.phone, rawEntry, () => { updateBookingDot(); });
+    openCancelConfirm(b.raw, () => { updateBookingDot(); });
   }
 
   // ─── ОТЗЫВ (скрытый экран, вход только по QR: ?review=1) ─────
@@ -2771,32 +2951,38 @@
     REVIEW_QUESTIONS.forEach(([id]) => { values[id] = document.getElementById(`rv_${id}`).value; });
     const comment = document.getElementById('rvComment').value.trim();
 
-    const saved = getSavedProfile();
-    const user = getTelegramUser();
-
+    document.getElementById('reviewAlert').style.display = 'none';
     btn.disabled = true;
     btn.style.opacity = '0.6';
     const originalText = btn.innerHTML;
     btn.innerHTML = 'Отправляем...';
 
+    // Телефон и Telegram сервер определяет сам по подписи Telegram.
+    // Раньше «Спасибо!» показывалось, даже если отзыв не дошёл.
+    let errorText = '';
     try {
-      await fetch(`${PROXY_BASE}/api/review`, {
+      const res = await apiFetch('/api/review', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...values,
-          comment,
-          phone: saved?.phone || null,
-          telegramId: user?.id || null,
-          telegramUsername: user?.username || null
-        })
+        body: JSON.stringify({ ...values, comment })
       });
-    } catch {}
+      if (res.status === 429) errorText = 'Вы уже оставили отзыв сегодня — спасибо!';
+      else if (!res.ok) errorText = 'Не удалось отправить отзыв. Попробуйте ещё раз.';
+    } catch {
+      errorText = 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
+    }
 
     btn.disabled = false;
     btn.style.opacity = '1';
     btn.innerHTML = originalText;
 
+    if (errorText) {
+      haptic('error');
+      document.getElementById('reviewAlertText').textContent = errorText;
+      document.getElementById('reviewAlert').style.display = 'flex';
+      return;
+    }
+
+    haptic('success');
     document.getElementById('screen-review').innerHTML = `
       <div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;">
         <div class="booking-overlay-icon" style="margin-bottom:20px;">
@@ -2804,6 +2990,7 @@
         </div>
         <div class="booking-overlay-title" style="margin-bottom:8px;">Спасибо!</div>
         <div class="booking-overlay-sub">Ваш отзыв реально помогает нам становиться лучше</div>
+        ${tg ? '<button class="btn-book" style="margin-top:28px;max-width:260px" onclick="tg.close()">Закрыть</button>' : ''}
       </div>
     `;
   }
@@ -2812,11 +2999,6 @@
   loadEvents();
   initHeaderAvatar();
   updateBookingDot();
-
-  // Скрытый вход для администратора: ?admin=1 в ссылке
-  if (new URLSearchParams(window.location.search).get('admin') === '1') {
-    showScreen('admin');
-  }
 
   // Скрытый вход в отзыв: ?review=1 в ссылке (только с QR-кода на столе, не из обычной навигации).
   // Если ссылку открывают через Telegram-механизм startapp (не обычный URL) — параметр
