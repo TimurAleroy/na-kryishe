@@ -315,11 +315,13 @@
     .menu-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2px 16px; margin-bottom: 14px; }
     .menu-box:last-child { margin-bottom: 0; }
     .menu-box-label { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); padding: 15px 0 9px; }
-    .menu-box-note { font-size: 11px; letter-spacing: 0.4px; text-transform: none; color: var(--text-muted); font-family: 'Inter', sans-serif; white-space: nowrap; }
-    .menu-item { padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
-    .menu-item:last-child { border-bottom: none; padding-bottom: 15px; }
-    .menu-item:active { opacity: 0.7; }
-    .menu-item-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    /* Каждая позиция — отдельная крупная зона нажатия на всю ширину бокса: подсвечивается при касании */
+    .menu-item { margin: 0 -16px; padding: 10px 16px; min-height: 54px; display: flex; align-items: center; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .12s;
+      background-image: linear-gradient(var(--border), var(--border)); background-repeat: no-repeat; background-size: calc(100% - 32px) 1px; background-position: 16px 100%; }
+    .menu-item:last-child { background-image: none; border-radius: 0 0 15px 15px; }
+    .menu-item:active { background-color: rgba(240,223,192,0.07); }
+    @media (hover: hover) { .menu-item:hover { background-color: rgba(240,223,192,0.04); } }
+    .menu-item-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; }
     .menu-item-name { font-family: 'Jost', sans-serif; font-size: 15px; color: var(--text); font-weight: 300; }
     .menu-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .menu-item-price { font-size: 13px; color: var(--accent); white-space: nowrap; }
@@ -2173,18 +2175,13 @@
         </div>`;
     }
 
-    // Блок-бокс на подраздел (или на позиции без подраздела). Если внутри у всех
-    // позиций одна и та же цена — выносим её один раз в шапку бокса, а не на каждую строку.
+    // Блок-бокс на подраздел (или на позиции без подраздела). У каждой позиции своя цена справа,
+    // даже если у всех в подразделе она одинаковая.
     function renderGroup(label, groupItems) {
-      const prices = groupItems.filter(it => it.price !== null).map(it => it.price);
-      const uniform = prices.length === groupItems.length && prices.length > 1 && prices.every(p => p === prices[0]);
-      const note = uniform ? `${prices[0]} ₽ за позицию` : '';
-      const labelHtml = label
-        ? `<div class="menu-box-label"><span>${menuEsc(label)}</span>${note ? `<span class="menu-box-note">${note}</span>` : ''}</div>`
-        : '';
+      const labelHtml = label ? `<div class="menu-box-label"><span>${menuEsc(label)}</span></div>` : '';
       return `<div class="menu-box"${label ? '' : ' style="padding-top:14px"'}>
           ${labelHtml}
-          ${groupItems.map(it => renderItem(it, uniform)).join('')}
+          ${groupItems.map(it => renderItem(it, false)).join('')}
         </div>`;
     }
 
