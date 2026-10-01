@@ -779,7 +779,16 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      pointer-events: none;
+      -webkit-user-drag: none;
     }
+    /* Жесты как в Инстаграме: удержание — пауза, два пальца — приближение. Браузер сам ничего не прокручивает и не выделяет */
+    .stories-slides { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    .story-slide.zooming { will-change: transform; z-index: 3; }
+    .story-slide.zoom-back { transition: transform .22s ease-out; }
+    .stories-progress, .stories-label, .stories-close, .stories-book { transition: opacity .18s ease; }
+    .stories-viewer.holding .stories-progress, .stories-viewer.holding .stories-label,
+    .stories-viewer.holding .stories-close, .stories-viewer.holding .stories-book { opacity: 0; pointer-events: none; }
     .story-caption {
       position: absolute; left: 20px; right: 20px; bottom: calc(130px + env(safe-area-inset-bottom, 0px));
       font-family: 'Jost', sans-serif; font-size: 22px; font-weight: 300; letter-spacing: 1px; color: #fff;
@@ -965,7 +974,7 @@
     <div class="stories-progress" id="barProgress"></div>
     <div class="stories-label">Бар</div>
     <button class="stories-close" onclick="showScreen('home')">✕</button>
-    <div class="stories-slides" id="barSlides" ontouchstart="storyTouchStart(event,'bar')" ontouchend="storyTouchEnd(event,'bar')" onclick="storyClick(event,'bar')">
+    <div class="stories-slides" id="barSlides" onclick="storyClick(event,'bar')">
       <div class="story-slide active" style="background:linear-gradient(160deg,#3f2410 0%,#140B00 100%)">
         <div class="story-placeholder">
           <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(184,115,51,0.5)" stroke-width="0.8"><path d="M5 4c0 5 3 8 7 8s7-3 7-8"/><line x1="5" y1="4" x2="19" y2="4"/><line x1="12" y1="12" x2="12" y2="19"/><line x1="8" y1="20" x2="16" y2="20"/></svg>
@@ -1005,7 +1014,7 @@
     <div class="stories-label" style="color:var(--accent)">ВИП-комнаты</div>
     <button class="stories-close" onclick="showScreen('home')">✕</button>
     <button class="stories-book" onclick="bookVipRoom()">Забронировать →</button>
-    <div class="stories-slides" id="vipSlides" ontouchstart="storyTouchStart(event,'vip')" ontouchend="storyTouchEnd(event,'vip')" onclick="storyClick(event,'vip')">
+    <div class="stories-slides" id="vipSlides" onclick="storyClick(event,'vip')">
       <div class="story-slide active" style="background:linear-gradient(160deg,#4a2e12 0%,#140B00 100%)">
         <div class="story-placeholder">
           <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(184,115,51,0.6)" stroke-width="0.8"><line x1="12" y1="1" x2="12" y2="11"/><polygon points="12 11 19 22 5 22"/></svg>
@@ -2432,18 +2441,140 @@
 
 
   // Stories logic
-  const storiesState = { bar: { cur: 0, timer: null }, vip: { cur: 0, timer: null } };
-  let touchStartX = 0;
+  const storiesState = { bar: { cur: 0, timer: null, paused: false, remaining: 5000, startedAt: 0 }, vip: { cur: 0, timer: null, paused: false, remaining: 5000, startedAt: 0 } };
+  // Жесты: тап по половинам — вперёд/назад, свайп в сторону — вперёд/назад,
+  // удержание пальца — пауза (полоски и кнопки прячутся), два пальца — приближение и сдвиг фото.
+  // Отпустили — фото плавно возвращается, сторис идёт дальше с того места, где остановилась.
+  const STORY_HOLD_MS = 180, STORY_ZOOM_MAX = 4;
+  let lastStoryTouchAt = 0;
+  const storyGesture = {};
 
-  function storyTouchStart(e, id) { touchStartX = e.touches[0].clientX; }
+  function storyPause(id) {
+    const st = storiesState[id];
+    if (st.paused) return;
+    st.paused = true;
+    if (st.timer) { clearTimeout(st.timer); st.timer = null; }
+    st.remaining = Math.max(0, (st.remaining || 5000) - (performance.now() - st.startedAt));
+    const fill = document.querySelectorAll('#' + id + 'Progress .story-prog-fill')[st.cur];
+    if (fill) fill.style.animationPlayState = 'paused';
+    document.getElementById(id + 'Stories').classList.add('holding');
+  }
+  function storyResume(id) {
+    const st = storiesState[id];
+    if (!st.paused) return;
+    st.paused = false;
+    document.getElementById(id + 'Stories').classList.remove('holding');
+    const fill = document.querySelectorAll('#' + id + 'Progress .story-prog-fill')[st.cur];
+    if (fill) fill.style.animationPlayState = 'running';
+    st.startedAt = performance.now();
+    st.timer = setTimeout(() => nextStory(id), Math.max(st.remaining, 50));
+  }
+
+  function storyActiveSlide(id) { return document.querySelector('#' + id + 'Slides .story-slide.active'); }
+  function storyZoomReset(id, animate) {
+    const el = storyActiveSlide(id);
+    if (!el) return;
+    if (!animate) { el.classList.remove('zooming', 'zoom-back'); el.style.transform = ''; el.style.transformOrigin = ''; return; }
+    el.classList.add('zoom-back');
+    el.style.transform = 'none';
+    setTimeout(() => { el.classList.remove('zooming', 'zoom-back'); el.style.transform = ''; el.style.transformOrigin = ''; }, 240);
+  }
+  const touchDist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const touchMid = t => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
+
+  function storyTouchStart(e, id) {
+    lastStoryTouchAt = Date.now();
+    const g = storyGesture[id] = storyGesture[id] || {};
+    const t = e.touches;
+    if (t.length >= 2) {
+      // второй палец: переходим из «удержания» в приближение
+      clearTimeout(g.holdTimer);
+      g.mode = 'pinch';
+      g.d0 = Math.max(touchDist(t), 1);
+      g.m0 = touchMid(t);
+      g.scale = 1;
+      storyPause(id);
+      const el = storyActiveSlide(id);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        el.classList.remove('zoom-back');
+        el.classList.add('zooming');
+        el.style.transformOrigin = `${g.m0.x - r.left}px ${g.m0.y - r.top}px`;
+      }
+      return;
+    }
+    g.mode = 'single';
+    g.x0 = t[0].clientX; g.y0 = t[0].clientY; g.t0 = Date.now(); g.moved = false;
+    clearTimeout(g.holdTimer);
+    g.holdTimer = setTimeout(() => { if (g.mode === 'single' && !g.moved) { g.held = true; storyPause(id); } }, STORY_HOLD_MS);
+    g.held = false;
+  }
+  function storyTouchMove(e, id) {
+    const g = storyGesture[id];
+    if (!g) return;
+    lastStoryTouchAt = Date.now();
+    e.preventDefault();
+    const t = e.touches;
+    if (g.mode === 'pinch' && t.length >= 2) {
+      g.scale = Math.min(STORY_ZOOM_MAX, Math.max(1, touchDist(t) / g.d0));
+      const m = touchMid(t);
+      const el = storyActiveSlide(id);
+      if (el) el.style.transform = `translate(${m.x - g.m0.x}px, ${m.y - g.m0.y}px) scale(${g.scale})`;
+      return;
+    }
+    if (g.mode === 'single' && t.length === 1) {
+      if (Math.hypot(t[0].clientX - g.x0, t[0].clientY - g.y0) > 10) { g.moved = true; clearTimeout(g.holdTimer); }
+    }
+  }
   function storyTouchEnd(e, id) {
-    const diff = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(diff) > 40) diff < 0 ? nextStory(id) : prevStory(id);
+    const g = storyGesture[id];
+    if (!g) return;
+    lastStoryTouchAt = Date.now();
+    clearTimeout(g.holdTimer);
+    if (g.mode === 'pinch') {
+      if (e.touches.length >= 1) return; // один палец ещё на экране — ждём, пока отпустят оба
+      g.mode = null;
+      storyZoomReset(id, true);
+      storyResume(id);
+      return;
+    }
+    if (g.mode !== 'single') return;
+    g.mode = null;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - g.x0, dy = t.clientY - g.y0;
+    const wasHeld = storiesState[id].paused;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      // свайп: листаем (showStory сам запустит таймер заново)
+      storiesState[id].paused = false;
+      document.getElementById(id + 'Stories').classList.remove('holding');
+      dx < 0 ? nextStory(id) : prevStory(id);
+    } else if (wasHeld) {
+      storyResume(id);
+    } else if (!g.moved && Date.now() - g.t0 < 400) {
+      const rect = document.getElementById(id + 'Slides').getBoundingClientRect();
+      t.clientX - rect.left > rect.width / 2 ? nextStory(id) : prevStory(id);
+    }
+    e.preventDefault(); // без «призрачного» клика после касания
+  }
+  function storyTouchCancel(id) {
+    const g = storyGesture[id];
+    if (g) { clearTimeout(g.holdTimer); g.mode = null; }
+    storyZoomReset(id, false);
+    storyResume(id);
   }
   function storyClick(e, id) {
+    if (Date.now() - lastStoryTouchAt < 700) return; // касание уже обработано выше; здесь только мышь
     const w = e.currentTarget.offsetWidth;
     e.clientX > w / 2 ? nextStory(id) : prevStory(id);
   }
+  ['bar', 'vip'].forEach(id => {
+    const el = document.getElementById(id + 'Slides');
+    el.addEventListener('touchstart', e => storyTouchStart(e, id), { passive: false });
+    el.addEventListener('touchmove', e => storyTouchMove(e, id), { passive: false });
+    el.addEventListener('touchend', e => storyTouchEnd(e, id), { passive: false });
+    el.addEventListener('touchcancel', () => storyTouchCancel(id), { passive: true });
+    el.addEventListener('contextmenu', e => e.preventDefault());
+  });
 
   function initStories(id) {
     const slides = document.querySelectorAll('#' + id + 'Slides .story-slide');
@@ -2460,6 +2591,9 @@
     const fills = document.querySelectorAll('#' + id + 'Progress .story-prog-fill');
     if (idx >= slides.length) { showScreen('home'); return; }
     if (idx < 0) idx = 0;
+    storyZoomReset(id, false);
+    storiesState[id].paused = false;
+    document.getElementById(id + 'Stories').classList.remove('holding');
     storiesState[id].cur = idx;
 
     slides.forEach((s, i) => s.classList.toggle('active', i === idx));
@@ -2473,6 +2607,8 @@
     void fills[idx].offsetWidth;
     fills[idx].style.animation = ''; // снимаем «none», иначе полоса не заполняется
     fills[idx].classList.add('active-fill');
+    storiesState[id].remaining = 5000;
+    storiesState[id].startedAt = performance.now();
     storiesState[id].timer = setTimeout(() => nextStory(id), 5000);
   }
 
