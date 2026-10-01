@@ -2357,7 +2357,7 @@
       return `<div class="ev-card" onclick="openEventDetail(${i})">
         <div class="ev-poster">${evPosterHTML(e)}</div>
         <div class="ev-body">
-          ${p.dateLabel ? `<div class="ev-pill"><span>${p.dateLabel}</span>${p.time ? `<span class="sp">✦</span><span>Сбор гостей в ${p.time}</span>` : ''}</div>` : ''}
+          ${p.dateLabel ? `<div class="ev-pill"><span>${p.dateLabel}</span>${p.time ? `<span class="sp">✦</span><span>Начало в ${p.time}</span>` : ''}</div>` : ''}
           <div class="ev-title">${evEsc(e.name)}</div>
           ${e.format ? `<div class="ev-fmt">${evEsc(e.format)}</div>` : ''}
           ${e.description ? `<div class="ev-desc">${evEsc(e.description)}</div>` : ''}
@@ -2373,8 +2373,8 @@
     const p = evParts(e.date);
     const facts = [];
     if (p.dateLabel) facts.push(['Когда', p.dateLabel]);
-    if (p.time) facts.push(['Сбор гостей', p.time]);
-    if (e.format) facts.push(['Формат', e.format]);
+    if (p.time) facts.push(['Начало', p.time]);
+    if (e.format) facts.push(['Детали', e.format]);
     const desc = String(e.description || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
     const others = eventsData.map((x, j) => ({ x, j })).filter(o => o.j !== i);
     document.getElementById('eventDetail').innerHTML = `
