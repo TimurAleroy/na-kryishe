@@ -466,6 +466,9 @@
       -webkit-text-fill-color: var(--text);
       opacity: 1;
     }
+    /* Значки календаря и часов в полях даты и времени: по умолчанию тёмные на тёмном фоне, делаем видимыми, цвета приложения */
+    input[type="date"].form-input, input[type="time"].form-input { color-scheme: dark; }
+    input[type="date"].form-input::-webkit-calendar-picker-indicator, input[type="time"].form-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.9; filter: invert(52%) sepia(62%) saturate(560%) hue-rotate(345deg) brightness(105%); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
     .form-row > div { min-width: 0; }
     select.form-input { cursor: pointer; }
