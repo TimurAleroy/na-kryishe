@@ -794,6 +794,18 @@
       font-family: 'Jost', sans-serif; font-size: 22px; font-weight: 300; letter-spacing: 1px; color: #fff;
       text-shadow: 0 2px 12px rgba(0,0,0,0.6); pointer-events: none; z-index: 2;
     }
+    /* ВИП-сторис: что есть в комнате (те же данные, что на сайте) */
+    .story-info {
+      position: absolute; right: 14px; top: calc(76px + env(safe-area-inset-top, 0px));
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 2; pointer-events: none;
+    }
+    .story-info span {
+      display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px; border-radius: 100px;
+      background: rgba(20,11,0,0.55); border: 1px solid rgba(255,255,255,0.22); color: #fff;
+      font-family: 'Jost', sans-serif; font-size: 13px; letter-spacing: 0.8px;
+      -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    }
+    .story-info svg { opacity: 0.85; }
     .story-slide.has-caption::after {
       content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; pointer-events: none;
       background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
@@ -1021,6 +1033,7 @@
           <p style="color:var(--accent)">ВИП-комната 1</p>
           <span>Фото скоро</span>
         </div>
+        <div class="story-info"><span>5 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0113 0"/></svg></span><span>PS5</span></div>
       </div>
       <div class="story-slide" style="background:linear-gradient(160deg,#553414 0%,#140B00 100%)">
         <div class="story-placeholder">
@@ -1028,6 +1041,7 @@
           <p style="color:var(--accent)">ВИП-комната 2</p>
           <span>Фото скоро</span>
         </div>
+        <div class="story-info"><span>5 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0113 0"/></svg></span><span>PS5</span></div>
       </div>
       <div class="story-slide" style="background:linear-gradient(160deg,#3f2410 0%,#140B00 100%)">
         <div class="story-placeholder">
@@ -1035,6 +1049,7 @@
           <p style="color:var(--accent)">ВИП-комната 3</p>
           <span>Фото скоро</span>
         </div>
+        <div class="story-info"><span>5 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0113 0"/></svg></span><span>PS5</span></div>
       </div>
     </div>
   </div>
@@ -2635,11 +2650,12 @@
     return storiesData;
   }
   const storiesSigOf = () => storiesData ? [...storiesData.bar, ...storiesData.vip].map(x => x.id + x.photoUrl + x.title).join('|') : '';
+  const VIP_INFO_HTML = '<div class="story-info"><span>5 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0113 0"/></svg></span><span>PS5</span></div>';
   function renderStorySlides(id) {
     const el = document.getElementById(id + 'Slides');
     const items = (storiesData && storiesData[id]) || [];
     el.innerHTML = items.length
-      ? items.map(x => `<div class="story-slide${x.title ? ' has-caption' : ''}"><img src="${evEsc(x.photoUrl)}" alt="${evEsc(x.title)}" decoding="async">${x.title ? `<div class="story-caption">${evEsc(x.title)}</div>` : ''}</div>`).join('')
+      ? items.map(x => `<div class="story-slide${x.title ? ' has-caption' : ''}"><img src="${evEsc(x.photoUrl)}" alt="${evEsc(x.title)}" decoding="async">${x.title ? `<div class="story-caption">${evEsc(x.title)}</div>` : ''}${id === 'vip' ? VIP_INFO_HTML : ''}</div>`).join('')
       : storyFallback[id];
   }
 
