@@ -954,7 +954,7 @@
     <span style="width:1px;height:14px;background:var(--border);margin:0 10px;flex-shrink:0;"></span>
     <span style="display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-      13:00 – 01:00
+      <span id="statusHours">13:00 – 01:00</span>
     </span>
   </div>
 </div>
@@ -1764,17 +1764,60 @@
   document.getElementById('bPhone').addEventListener('input', clearBookingErrors);
   document.getElementById('bDate').addEventListener('input', clearBookingErrors);
   document.getElementById('bTime').addEventListener('input', clearBookingErrors);
+  // выбрали закрытую дату — говорим сразу, не дожидаясь «Забронировать»
+  document.getElementById('bDate').addEventListener('change', () => {
+    const d = document.getElementById('bDate').value;
+    if (d && !(bookingContext && bookingContext.type === 'event') && venueClosedReason(d)) showDateError(venueClosedMessage(d, venueClosedReason(d)));
+  });
+
+  // ─── Режим работы ─────
+  // Часы по дням недели и закрытые даты (с причиной) задаются в приложении сотрудников и приходят с сервера.
+  // Пока не пришли (или сервер недоступен) — обычный режим 13:00–01:00; сервер всё равно проверит бронь сам.
+  let venueCfg = null;
+  const VENUE_DEFAULT_HOURS = { open: '13:00', close: '01:00', closed: false };
+  function venueHoursFor(day) {
+    const wd = String(new Date(day + 'T00:00:00Z').getUTCDay() || 7);
+    return (venueCfg && venueCfg.hours && venueCfg.hours[wd]) || VENUE_DEFAULT_HOURS;
+  }
+  // Почему в этот день (день заведения) нельзя бронировать: причина или ''
+  function venueClosedReason(day) {
+    if (!venueCfg) return '';
+    const c = (venueCfg.closed || []).find(x => x.date === day);
+    if (c) return c.reason || 'Закрыто';
+    return venueHoursFor(day).closed ? 'Выходной' : '';
+  }
+  function venueTimeInside(day, minutes) {
+    const h = venueHoursFor(day);
+    const m = x => Number(x.slice(0, 2)) * 60 + Number(x.slice(3, 5));
+    const o = m(h.open), c = m(h.close);
+    return c > o ? (minutes >= o && minutes <= c) : (minutes >= o || minutes <= c);
+  }
+  function venueClosedMessage(day, reason) {
+    const inline = /^[А-ЯЁ][а-яё]/.test(reason) ? reason.charAt(0).toLowerCase() + reason.slice(1) : reason; // «ДР Тимура» не трогаем
+    return `${formatDateLocal(day)} мы не принимаем гостей: ${inline}. Выберите, пожалуйста, другую дату.`;
+  }
+  async function loadVenue() {
+    try {
+      const res = await apiFetch('/api/venue');
+      if (!res.ok) return;
+      const d = await res.json();
+      if (d && d.hours) { venueCfg = d; checkStatus(); }
+    } catch {}
+  }
 
   // Status
   function checkStatus() {
-    // Открыты 13:00–01:00 по Москве
-    const h = mskNowParts().h;
-    const open = h >= 13 || h < 1;
-    if (!open) {
-      document.getElementById('statusDot').classList.add('closed');
-      document.querySelector('.status-badge').classList.add('closed');
-      document.getElementById('statusText').textContent = 'Сейчас закрыто';
-    }
+    // По Москве; день заведения — до 06:00 утра ещё идёт вчерашний вечер
+    const p = mskNowParts();
+    const day = venueTodayStr();
+    const h = venueHoursFor(day);
+    const reason = venueClosedReason(day);
+    const open = !reason && venueTimeInside(day, p.h * 60 + p.min);
+    document.getElementById('statusDot').classList.toggle('closed', !open);
+    document.querySelector('.status-badge').classList.toggle('closed', !open);
+    document.getElementById('statusText').textContent = open ? 'Сейчас открыто' : (reason && reason !== 'Выходной' ? 'Сегодня закрыто' : 'Сейчас закрыто');
+    const hrs = document.getElementById('statusHours');
+    if (hrs) hrs.textContent = reason ? reason : `${h.open} – ${h.close}`;
   }
 
   // Navigation
@@ -1938,6 +1981,12 @@
       document.getElementById('bDate').focus();
       return;
     }
+    // Закрытая дата (частное мероприятие, выходной). Бронь на мероприятие не проверяем — его дату ставит администратор.
+    if (!(bookingContext && bookingContext.type === 'event') && venueClosedReason(date)) {
+      showDateError(venueClosedMessage(date, venueClosedReason(date)));
+      document.getElementById('bDate').focus();
+      return;
+    }
 
     if (!time) {
       showTimeError('Пожалуйста, укажите время брони');
@@ -1960,9 +2009,10 @@
     if (!eventName) {
       const [bh, bm] = time.split(':').map(Number);
       const timeMinutes = bh * 60 + bm;
-      const isClosed = timeMinutes > 60 && timeMinutes < 780; // после 01:00 и до 13:00
+      const isClosed = !venueTimeInside(date, timeMinutes); // вне часов работы этого дня (обычно 13:00–01:00)
       if (isClosed) {
-        showTimeError('Мы открыты с 13:00 до 01:00 — пожалуйста, выберите время в этом промежутке');
+        const vh = venueHoursFor(date);
+        showTimeError(`В этот день мы открыты с ${vh.open} до ${vh.close} — пожалуйста, выберите время в этом промежутке`);
         document.getElementById('bTime').focus();
         return;
       }
@@ -3454,6 +3504,7 @@
     BACK_OVERLAYS.forEach(([id]) => { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); });
   }
   checkStatus();
+  loadVenue();
   loadEvents();
   if (new URLSearchParams(window.location.search).get('review') !== '1') loadStories(); // фото сторис подтягиваются в фоне, пока гость на главной
   initHeaderAvatar();
