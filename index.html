@@ -806,6 +806,10 @@
       -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     }
     .story-info svg { opacity: 0.85; }
+    /* Пока фото комнаты не загрузилось, под значками чёрный фон — они выглядели чёрными кружками и через секунду
+       «светлели». Показываем значки вместе с фото: плавно, когда оно готово. */
+    .story-info { transition: opacity .25s ease; }
+    .story-slide img:not(.ready) ~ .story-info { opacity: 0; }
     .story-slide.has-caption::after {
       content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; pointer-events: none;
       background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0));
@@ -2718,7 +2722,7 @@
       ? items.map((x, i) => {
         // комнат три, и называются они одинаково везде: «ВИП-комната 1…3» (по порядку фото)
         const cap = id === 'vip' && i < VIP_ROOM_COUNT ? `ВИП-комната ${i + 1}` : x.title;
-        return `<div class="story-slide${cap ? ' has-caption' : ''}"><img src="${evEsc(x.photoUrl)}" alt="${evEsc(cap)}" decoding="async">${cap ? `<div class="story-caption">${evEsc(cap)}</div>` : ''}${id === 'vip' ? VIP_INFO_HTML : ''}</div>`;
+        return `<div class="story-slide${cap ? ' has-caption' : ''}"><img src="${evEsc(x.photoUrl)}" alt="${evEsc(cap)}" decoding="async" onload="this.classList.add('ready')" onerror="this.classList.add('ready')">${cap ? `<div class="story-caption">${evEsc(cap)}</div>` : ''}${id === 'vip' ? VIP_INFO_HTML : ''}</div>`;
       }).join('')
       : storyFallback[id];
   }
