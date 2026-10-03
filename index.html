@@ -1880,12 +1880,14 @@
   // Booking
   let bookingContext = null; // { type: 'vip', room: 'ВИП-комната 1' }
 
+  // ─── ВИП-комнаты: три комнаты, «ВИП-комната 1…3» ─────
+  // В форме про занятость комнаты ничего не показываем. Комната занята — сервер ответит отказом после отправки;
+  // свободна только до какого-то времени — заявка принимается, администратор сам свяжется с гостем.
+  const VIP_ROOM_COUNT = 3;
   function bookVipRoom() {
-    // Название комнаты — подпись под фото, которую задали сотрудники.
-    // Нет подписи — «ВИП-комната N» по номеру слайда.
     const idx = storiesState.vip.cur;
-    const slideTitle = storiesData && storiesData.vip && storiesData.vip[idx] && String(storiesData.vip[idx].title || '').trim();
-    bookingContext = { type: 'vip', room: slideTitle || ('ВИП-комната ' + (idx + 1)) };
+    const n = idx >= 0 && idx < VIP_ROOM_COUNT ? idx + 1 : 1;
+    bookingContext = { type: 'vip', n, room: 'ВИП-комната ' + n };
     showScreen('book');
     prefillBookingForm();
     const banner = document.getElementById('bookingContextBanner');
@@ -2016,6 +2018,11 @@
         body: JSON.stringify({ name, phone, dateISO: moment.calISO, time, guests, comment, room, eventName })
       });
       if (res.ok) result = await res.json().catch(() => ({}));
+      else if (res.status === 409) {
+        // ВИП-комната на это время уже занята — заявка не создана
+        const d = await res.json().catch(() => ({}));
+        errorText = d.message || 'К сожалению, эта комната на это время уже занята. Выберите другую комнату или время.';
+      }
       else if (res.status === 429) errorText = 'Слишком много броней подряд. Попробуйте через несколько минут.';
       else errorText = 'Не удалось отправить бронь. Попробуйте ещё раз.';
     } catch {
@@ -2658,7 +2665,11 @@
     const el = document.getElementById(id + 'Slides');
     const items = (storiesData && storiesData[id]) || [];
     el.innerHTML = items.length
-      ? items.map(x => `<div class="story-slide${x.title ? ' has-caption' : ''}"><img src="${evEsc(x.photoUrl)}" alt="${evEsc(x.title)}" decoding="async">${x.title ? `<div class="story-caption">${evEsc(x.title)}</div>` : ''}${id === 'vip' ? VIP_INFO_HTML : ''}</div>`).join('')
+      ? items.map((x, i) => {
+        // комнат три, и называются они одинаково везде: «ВИП-комната 1…3» (по порядку фото)
+        const cap = id === 'vip' && i < VIP_ROOM_COUNT ? `ВИП-комната ${i + 1}` : x.title;
+        return `<div class="story-slide${cap ? ' has-caption' : ''}"><img src="${evEsc(x.photoUrl)}" alt="${evEsc(cap)}" decoding="async">${cap ? `<div class="story-caption">${evEsc(cap)}</div>` : ''}${id === 'vip' ? VIP_INFO_HTML : ''}</div>`;
+      }).join('')
       : storyFallback[id];
   }
 
