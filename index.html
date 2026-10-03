@@ -2842,11 +2842,14 @@
     }
     historyEntries = [];
     let activeCount = 0;
+    // Гость уже был и ушёл (сотрудник отметил «Гость ушёл») — бронь считается прошедшей сразу, а не в конце вечера.
+    // Раньше она до утра висела «Подтверждена» с кнопкой отмены. Номера таких броней присылает сервер.
+    const stages = me.stages || {};
     const itemsHtml = list.map(d => {
       const cancelled = d.includes('(отменено)');
       const confirmed = d.includes('(подтверждено)');
       const cleanEntry = d.replace(' (отменено)', '').replace(' (подтверждено)', '');
-      const expired = entryExpired(cleanEntry);
+      const expired = entryExpired(cleanEntry) || ['left','noshow'].includes(stages[parseEntryClient(cleanEntry).uid]);
       const active = !cancelled && !expired;
       if (active) activeCount++;
       const idx = historyEntries.push(cleanEntry) - 1;
@@ -3124,7 +3127,7 @@
   function parseEntryClient(raw) {
     if (!raw) return { iso: null, display: raw, kind: 'table' };
     const parts = raw.split('|');
-    if (parts.length >= 3) return { iso: parts[0], display: parts[1], kind: parts[2] };
+    if (parts.length >= 3) return { iso: parts[0], display: parts[1], kind: parts[2], uid: parts[3] || '' };
     if (parts.length === 2) return { iso: parts[0], display: parts[1], kind: 'table' };
     return { iso: null, display: parts[0], kind: 'table' };
   }
