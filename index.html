@@ -473,7 +473,19 @@
     }
     /* Значки календаря и часов в полях даты и времени: по умолчанию тёмные на тёмном фоне, делаем видимыми, цвета приложения */
     input[type="date"].form-input, input[type="time"].form-input { color-scheme: dark; }
-    input[type="date"].form-input::-webkit-calendar-picker-indicator, input[type="time"].form-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.9; filter: invert(52%) sepia(62%) saturate(560%) hue-rotate(345deg) brightness(105%); }
+    /* Дата и время: та же двойная стрелка справа, что и у списков. Родной значок календаря/часов делаем прозрачным,
+       но оставляем на месте и на всю правую часть поля: нажатие по стрелке по-прежнему открывает выбор. */
+    input[type="date"].form-input, input[type="time"].form-input {
+      padding-right: 40px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='18' viewBox='0 0 14 18' fill='none' stroke='%23b87333' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 7 7 3 11 7'/%3E%3Cpolyline points='3 11 7 15 11 11'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 14px 18px;
+    }
+    input[type="date"].form-input::-webkit-calendar-picker-indicator, input[type="time"].form-input::-webkit-calendar-picker-indicator {
+      cursor: pointer; opacity: 0; position: absolute; right: 0; top: 0; width: 44px; height: 100%; margin: 0; padding: 0;
+    }
+    input[type="date"].form-input, input[type="time"].form-input { position: relative; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
     .form-row > div { min-width: 0; }
     /* Списки (день рождения, гости, длительность): справа двойная стрелка «вверх-вниз», как у кнопок-переключателей */
