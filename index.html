@@ -325,6 +325,11 @@
     .menu-item-name { font-family: 'Jost', sans-serif; font-size: 15px; color: var(--text); font-weight: 300; }
     .menu-item-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .menu-item-price { font-size: 13px; color: var(--accent); white-space: nowrap; }
+    .menu-item-main { min-width: 0; flex: 1; }
+    /* Состав под названием: мельче и приглушённо, как у меню с «составом» под каждой позицией */
+    .menu-item-comp { font-family: 'Inter', sans-serif; font-size: 11.5px; line-height: 1.4; color: var(--text-muted); margin-top: 3px; font-weight: 300; }
+    .menu-item-price-col { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .menu-item-vol { font-size: 10.5px; letter-spacing: 0.3px; color: var(--text-muted); white-space: nowrap; }
     .menu-item-chevron { color: var(--text-muted); flex-shrink: 0; }
 
     /* MENU ITEM DETAIL — полноэкранный "погружённый" вид блюда, тот же язык, что у VIP/Бар сторис */
@@ -471,7 +476,15 @@
     input[type="date"].form-input::-webkit-calendar-picker-indicator, input[type="time"].form-input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.9; filter: invert(52%) sepia(62%) saturate(560%) hue-rotate(345deg) brightness(105%); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-width: 0; }
     .form-row > div { min-width: 0; }
-    select.form-input { cursor: pointer; }
+    /* Списки (день рождения, гости, длительность): справа двойная стрелка «вверх-вниз», как у кнопок-переключателей */
+    select.form-input {
+      cursor: pointer;
+      padding-right: 40px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='18' viewBox='0 0 14 18' fill='none' stroke='%23b87333' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 7 7 3 11 7'/%3E%3Cpolyline points='3 11 7 15 11 11'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 14px 18px;
+    }
     /* Пока время/гости не выбраны, подсказка «Выберите» бледная, как placeholder у полей */
     select.form-input:invalid { color: var(--text-muted); }
     select.form-input option { color: var(--text); background: var(--bg-card); }
@@ -1209,6 +1222,27 @@
   <div class="footer">На Крыше · Владикавказ<br>ул. Весенняя 19Б</div>
 </div>
 
+<!-- НАПИСАТЬ УПРАВЛЯЮЩЕМУ -->
+<div class="booking-overlay" id="msgOverlay" onclick="if(event.target===this) closeMessageForm()">
+  <div class="booking-overlay-card" style="max-width:360px;padding:26px 22px;text-align:left;max-height:88vh;overflow-y:auto;">
+    <div id="msgFormBox">
+      <h3 style="font-size:18px;font-weight:500;margin-bottom:6px">Написать управляющему</h3>
+      <p style="font-size:13px;line-height:1.5;color:var(--text-sub);margin-bottom:14px">Вопросы, пожелания, идеи. Мы читаем каждое сообщение и ответим вам здесь, в Telegram.</p>
+      <textarea class="form-input" id="msgText" maxlength="2000" style="height:140px;resize:none" placeholder="Ваше сообщение..." oninput="onMessageInput()"></textarea>
+      <div id="msgError" style="display:none;font-size:12px;color:var(--accent);margin-top:8px;line-height:1.4"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+        <button type="button" class="verify-btn" id="msgSendBtn" onclick="sendMessageToManager()">Отправить</button>
+        <button type="button" class="verify-btn" style="background:transparent;color:var(--text-sub);border-color:var(--border)" onclick="closeMessageForm()">Закрыть</button>
+      </div>
+    </div>
+    <div id="msgDoneBox" style="display:none;text-align:center;padding:10px 0">
+      <h3 style="font-size:18px;font-weight:500;margin-bottom:8px">Сообщение отправлено</h3>
+      <p style="font-size:13px;line-height:1.5;color:var(--text-sub);margin-bottom:16px">Спасибо! Ответ придёт вам в Telegram от бота «На Крыше».</p>
+      <button type="button" class="verify-btn" onclick="closeMessageForm()">Хорошо</button>
+    </div>
+  </div>
+</div>
+
 <!-- BOOKING STATUS OVERLAY -->
 <div class="booking-overlay" id="bookingStatusOverlay" onclick="if(event.target===this) closeBookingStatus()">
   <div class="booking-overlay-card" style="max-width:340px;padding:32px 24px;max-height:80vh;overflow-y:auto;" id="bookingStatusCard">
@@ -1271,7 +1305,7 @@
     <!-- За одним столом — до 5 гостей. Большую компанию рассаживает управляющий. -->
     <div class="verify-box" id="bGuestsMore" style="display:none;margin:8px 0 0">
       <div class="verify-text">За одним столом — до 5 гостей. Для компании больше напишите управляющему — подберём столы рядом.</div>
-      <button type="button" class="verify-btn" onclick="openAdmin()">Написать управляющему</button>
+      <button type="button" class="verify-btn" onclick="openAdmin('Хотим забронировать стол на компанию больше 5 человек. ')">Написать управляющему</button>
     </div>
   </div>
   <div class="field-error" id="guestsError">
@@ -1558,8 +1592,7 @@
     }, { passive: false });
   }
 
-  const ADMIN_USERNAME = 'zermatttt';
-  const NOTION_DB = '35173a71663680999ebcf882ecea022d';
+    const NOTION_DB = '35173a71663680999ebcf882ecea022d';
 
   // Маска телефона — "+7 (989) 741-21-88", "+7" стереть нельзя
   // Форматирует "YYYY-MM-DD" в "15 августа" без прохода через UTC (в отличие от new Date(str))
@@ -1916,9 +1949,42 @@
   }
 
   // Admin
-  function openAdmin() {
-    const url = 'https://t.me/' + ADMIN_USERNAME;
-    if (tg) tg.openTelegramLink(url); else window.open(url,'_blank');
+  // «Написать управляющему»: форма внутри приложения. Сообщение попадает в приложение сотрудников (раздел «Обращения»),
+  // а не в личный чат владельца; ответ придёт гостю в Telegram от бота. Не больше 3 сообщений в час.
+  function openAdmin(prefill) {
+    const t = document.getElementById('msgText');
+    if (typeof prefill === 'string' && prefill && !t.value.trim()) t.value = prefill;
+    document.getElementById('msgFormBox').style.display = '';
+    document.getElementById('msgDoneBox').style.display = 'none';
+    const err = document.getElementById('msgError');
+    err.style.display = 'none';
+    if (!hasTelegramAuth()) { err.textContent = 'Откройте приложение в Telegram, чтобы написать управляющему'; err.style.display = 'block'; }
+    document.getElementById('msgOverlay').classList.add('show');
+    setTimeout(() => { try { t.focus(); } catch (e) {} }, 250);
+  }
+  function closeMessageForm() { document.getElementById('msgOverlay').classList.remove('show'); }
+  function onMessageInput() { document.getElementById('msgError').style.display = 'none'; }
+  let msgSending = false;
+  async function sendMessageToManager() {
+    if (msgSending) return;
+    const t = document.getElementById('msgText');
+    const err = document.getElementById('msgError');
+    const text = t.value.trim();
+    if (!text) { err.textContent = 'Напишите сообщение'; err.style.display = 'block'; return; }
+    const btn = document.getElementById('msgSendBtn');
+    msgSending = true; btn.disabled = true; btn.textContent = 'Отправляем...';
+    try {
+      const res = await apiFetch('/api/message', { method: 'POST', body: JSON.stringify({ text }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { err.textContent = data.error || 'Не удалось отправить, попробуйте ещё раз'; err.style.display = 'block'; return; }
+      t.value = '';
+      document.getElementById('msgFormBox').style.display = 'none';
+      document.getElementById('msgDoneBox').style.display = 'block';
+    } catch (e) {
+      err.textContent = 'Нет связи. Проверьте интернет и попробуйте ещё раз'; err.style.display = 'block';
+    } finally {
+      msgSending = false; btn.disabled = false; btn.textContent = 'Отправить';
+    }
   }
 
   // FAQ
@@ -2257,9 +2323,15 @@
     function renderItem(it, hidePrice) {
       return `<div class="menu-item" onclick="openMenuDetail('${it.id}')">
           <div class="menu-item-row">
-            <div class="menu-item-name">${menuEsc(it.name)}</div>
+            <div class="menu-item-main">
+              <div class="menu-item-name">${menuEsc(it.name)}</div>
+              ${it.composition ? `<div class="menu-item-comp">${menuEsc(it.composition)}</div>` : ''}
+            </div>
             <div class="menu-item-right">
-              ${!hidePrice && it.price !== null ? `<div class="menu-item-price">${it.price} ₽</div>` : ''}
+              ${(!hidePrice && it.price !== null) || it.volume ? `<div class="menu-item-price-col">
+                ${!hidePrice && it.price !== null ? `<div class="menu-item-price">${it.price} ₽</div>` : ''}
+                ${it.volume ? `<div class="menu-item-vol">${menuEsc(it.volume)}</div>` : ''}
+              </div>` : ''}
               <svg class="menu-item-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 6 15 12 9 18"/></svg>
             </div>
           </div>
@@ -2328,7 +2400,8 @@
     if (it.price !== null) { priceEl.textContent = `${it.price} ₽`; priceEl.style.display = 'block'; }
     else { priceEl.style.display = 'none'; }
     const descEl = document.getElementById('menuDetailDesc');
-    if (it.description) { descEl.textContent = it.description; descEl.style.display = 'block'; }
+    const detailText = [it.composition, it.volume ? 'Объём: ' + it.volume : '', it.description].filter(Boolean).join('\n\n');
+    if (detailText) { descEl.textContent = detailText; descEl.style.whiteSpace = 'pre-line'; descEl.style.display = 'block'; }
     else { descEl.style.display = 'none'; }
 
     document.getElementById('menuDetailOverlay').scrollTop = 0;
