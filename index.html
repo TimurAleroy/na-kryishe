@@ -1313,13 +1313,10 @@
       <option value="" disabled selected>Сколько вас будет?</option>
       <option value="1">1</option><option value="2">2</option><option value="3">3</option>
       <option value="4">4</option><option value="5">5</option>
-      <option value="more">Больше 5</option>
+      <option value="5+">5+</option>
     </select>
-    <!-- За одним столом — до 5 гостей. Большую компанию рассаживает управляющий. -->
-    <div class="verify-box" id="bGuestsMore" style="display:none;margin:8px 0 0">
-      <div class="verify-text">За одним столом — до 5 гостей. Для компании больше напишите управляющему — подберём столы рядом.</div>
-      <button type="button" class="verify-btn" onclick="openAdmin('Хотим забронировать стол на компанию больше 5 человек. ')">Написать управляющему</button>
-    </div>
+    <!-- 5+ — обычная бронь как на 5 гостей; точное число администратор уточнит по телефону. -->
+    <div class="verify-text" id="bGuestsMore" style="display:none;margin:8px 0 0;opacity:.7">Бронь придёт как на 5 гостей — точное число администратор уточнит при звонке.</div>
   </div>
   <div class="field-error" id="guestsError">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
@@ -1765,15 +1762,16 @@
     document.getElementById('bDate').min = venueTodayStr();
   }
 
-  // ─── Гости: за одним столом до 5. «Больше 5» — подсказка написать управляющему ─────────
+  // ─── Гости: за одним столом до 5. «5+» — обычная бронь, число уточнит администратор ─────────
   const MAX_GUESTS = 5;
   function onGuestsChange() {
-    const more = document.getElementById('bGuests').value === 'more';
+    const more = document.getElementById('bGuests').value === '5+';
     document.getElementById('bGuestsMore').style.display = more ? 'block' : 'none';
     clearBookingErrors();
   }
   function getGuestsValue() {
     const v = document.getElementById('bGuests').value;
+    if (v === '5+') return '5+';
     const n = parseInt(v, 10);
     return Number.isFinite(n) && n >= 1 && n <= MAX_GUESTS ? String(n) : '';
   }
@@ -2076,8 +2074,7 @@
     }
 
     if (!guests) {
-      const more = document.getElementById('bGuests').value === 'more';
-      showGuestsError(more ? 'За одним столом — до 5 гостей. Для компании больше напишите управляющему' : 'Выберите, сколько вас будет');
+      showGuestsError('Выберите, сколько вас будет');
       document.getElementById('bGuests').focus();
       return;
     }
