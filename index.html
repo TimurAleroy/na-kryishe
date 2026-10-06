@@ -3154,6 +3154,7 @@
     document.getElementById('profileAlert').style.display = 'none';
   }
   document.getElementById('pPhone').addEventListener('input', clearProfileErrors);
+  ['pBirthDay', 'pBirthMonth'].forEach(id => document.getElementById(id).addEventListener('change', clearProfileErrors));
 
   let profileSaving = false;
   async function saveProfile() {
@@ -3168,6 +3169,19 @@
     if (!phone || phone === '+7' || phone.replace(/\D/g, '').length < 11) {
       showProfileError('Укажите номер телефона полностью', 'pPhone');
       document.getElementById('pPhone').focus();
+      return;
+    }
+
+    // День рождения: либо день и месяц вместе, либо оба пустые. Раньше при выборе только одного дата молча не сохранялась,
+    // а гость видел «Профиль сохранён»; 31 февраля тоже принималось.
+    if ((day && !month) || (!day && month)) {
+      haptic('warning');
+      showProfileError('Выберите и день, и месяц рождения — или оставьте оба поля пустыми');
+      return;
+    }
+    if (day && month && Number(day) > new Date(Date.UTC(2000, Number(month), 0)).getUTCDate()) {
+      haptic('warning');
+      showProfileError('В этом месяце нет такого числа — проверьте день рождения');
       return;
     }
 
@@ -3199,6 +3213,10 @@
         setVerifyState('ask', 'Этот номер уже есть в нашей базе. Подтвердите через Telegram, что он ваш, — и мы покажем ваши брони.');
         showProfileError('Нужно подтвердить номер — кнопка выше');
         return;
+      }
+      if (res.status === 400) {
+        const j = await res.json().catch(() => ({}));
+        if (j && j.field === 'birthday') { haptic('warning'); showProfileError(j.error || 'Проверьте день рождения'); return; }
       }
       if (!res.ok) throw new Error(String(res.status));
       const me = await res.json();
