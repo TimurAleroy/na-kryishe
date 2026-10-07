@@ -3636,7 +3636,7 @@
 </script>
 <!-- СЕЗОН: праздничная анимация поверх приложения (только у гостей). Какой эффект и когда — решает основатель в приложении
      сотрудников (Сервис → Сезоны); приложение спрашивает у сервера, что показывать сегодня (/api/season).
-     Эффекты: newyear (снег и гирлянда), valentine (сердечки), march8 (лепестки).
+     Эффекты: newyear (снег и гирлянда), valentine (сердечки), march8 (мимоза и цветочки).
      Не мешает: не ловит нажатия, уважает «уменьшить движение» в настройках телефона, стоит на паузе, когда приложение не на экране.
      Не отвечает сервер — анимации просто нет. Посмотреть как есть: добавить к адресу ?season=newyear, ?season=valentine или ?season=march8 (?season=off — выключить). -->
 <script>
@@ -3695,14 +3695,53 @@
   if (id === 'valentine') {
     ['#D9788A', '#C85A72', '#E9A3B0', '#B87333', '#F0DFC0'].forEach(function (c) { sprites.push(colored(heartPath, c, 'rgba(255,255,255,0.25)')); });
   } else if (id === 'march8') {
-    ['#F3C6D3', '#EBA9BE', '#F7DDE5', '#F0DFC0', '#E8B6A8'].forEach(function (c) { sprites.push(colored(petalPath, c, 'rgba(255,255,255,0.3)')); });
+    // мимоза — главный символ 8 Марта: веточка с жёлтыми пушистыми шариками; и нежные розовые цветочки
+    var mimosa = function (flip) {
+      return sprite(28, function (x, S) {
+        if (flip) { x.translate(S, 0); x.scale(-1, 1); }
+        x.strokeStyle = '#7FA55A'; x.lineWidth = 1.4; x.lineCap = 'round';
+        x.beginPath(); x.moveTo(5, 25); x.quadraticCurveTo(12, 17, 21, 6); x.stroke();
+        x.beginPath(); x.moveTo(11, 19); x.quadraticCurveTo(8, 12, 5, 9); x.stroke();
+        x.beginPath(); x.moveTo(16, 13); x.quadraticCurveTo(19, 14, 24, 15); x.stroke();
+        [[21, 6, 4.4], [5.5, 9, 4], [23.5, 15, 4], [14, 15.5, 4.3], [9.5, 20.5, 3.8], [17.5, 10, 3.8]].forEach(function (p) {
+          var g = x.createRadialGradient(p[0] - 0.8, p[1] - 0.8, 0.3, p[0], p[1], p[2]);
+          g.addColorStop(0, '#FFFBD0'); g.addColorStop(0.55, '#FFE35C'); g.addColorStop(1, '#FFC91F');
+          x.fillStyle = g; x.beginPath(); x.arc(p[0], p[1], p[2], 0, 7); x.fill();
+          x.fillStyle = 'rgba(255,253,225,0.95)';
+          for (var k = 0; k < 6; k++) { var an = k * 1.05 + p[0]; x.beginPath(); x.arc(p[0] + Math.cos(an) * p[2] * 0.7, p[1] + Math.sin(an) * p[2] * 0.7, 0.75, 0, 7); x.fill(); }
+        });
+      });
+    };
+    var blossom = function (petal, mid) {
+      return sprite(24, function (x, S) {
+        var cx = S / 2, cy = S / 2;
+        for (var k = 0; k < 5; k++) {
+          var an = k * 6.2832 / 5 - 1.5708, px = cx + Math.cos(an) * 5.2, py = cy + Math.sin(an) * 5.2;
+          var g = x.createRadialGradient(px, py, 0.5, px, py, 5);
+          g.addColorStop(0, petal[0]); g.addColorStop(1, petal[1]);
+          x.fillStyle = g; x.beginPath(); x.arc(px, py, 4.6, 0, 7); x.fill();
+        }
+        x.fillStyle = mid; x.beginPath(); x.arc(cx, cy, 2.6, 0, 7); x.fill();
+        x.fillStyle = 'rgba(255,255,255,0.55)'; x.beginPath(); x.arc(cx - 0.7, cy - 0.7, 0.9, 0, 7); x.fill();
+      });
+    };
+    sprites.push(mimosa(false), mimosa(true), mimosa(false), blossom(['#FFD3E0', '#F29BB5'], '#FFC94D'), blossom(['#FFE3EA', '#F7B6C8'], '#F5B83D'));
   }
-  var bulbColors = ['#FFC15E', '#F0DFC0', '#E58F3A', '#FFD98A'];
+  // гирлянда: тёплые огоньки в цветах бара. Лампочка — колба с цоколем, вокруг мягкое свечение
+  var bulbColors = ['#FFD27A', '#FF9F43', '#FFF1D0', '#FF7A5C'];
   var bulbSprites = bulbColors.map(function (c) {
-    return sprite(20, function (x, s) {
-      var g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-      g.addColorStop(0, c); g.addColorStop(0.28, c); g.addColorStop(0.32, 'rgba(255,193,94,0.35)'); g.addColorStop(1, 'rgba(255,193,94,0)');
-      x.fillStyle = g; x.beginPath(); x.arc(s / 2, s / 2, s / 2, 0, 7); x.fill();
+    return sprite(26, function (x, S) {
+      x.fillStyle = '#4A2E18'; x.fillRect(S / 2 - 2, 3.2, 4, 3.2);
+      var g = x.createRadialGradient(S / 2 - 0.8, 11.5, 0.4, S / 2, 12.5, 5.6);
+      g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.35, c); g.addColorStop(1, c);
+      x.fillStyle = g; x.beginPath(); x.ellipse(S / 2, 12.6, 3.5, 5.3, 0, 0, 7); x.fill();
+    });
+  });
+  var haloSprites = bulbColors.map(function (c) {
+    return sprite(26, function (x, S) {
+      var g = x.createRadialGradient(S / 2, 12.6, 0, S / 2, 12.6, 12.5);
+      g.addColorStop(0, c); g.addColorStop(0.25, c); g.addColorStop(1, 'rgba(255,200,120,0)');
+      x.globalAlpha = 0.55; x.fillStyle = g; x.beginPath(); x.arc(S / 2, 12.6, 12.5, 0, 7); x.fill();
     });
   });
 
@@ -3712,39 +3751,49 @@
   function spawn(top) {
     var p = { x: rnd(0, W), y: top ? rnd(-H * 0.1, -8) : rnd(-8, H), ph: rnd(0, 6.28) };
     if (id === 'newyear') { p.r = rnd(1, 3.2); p.vy = rnd(14, 34) * (p.r / 2.2); p.sw = rnd(8, 22); p.a = rnd(0.5, 0.95); }
-    else { p.s = rnd(id === 'valentine' ? 9 : 10, id === 'valentine' ? 18 : 20); p.vy = rnd(16, 34); p.sw = rnd(14, 34); p.a = rnd(0.55, 0.9); p.rot = rnd(0, 6.28); p.vr = rnd(-1, 1); p.img = sprites[(Math.random() * sprites.length) | 0]; }
+    else { p.s = id === 'valentine' ? rnd(9, 18) : rnd(18, 30); p.vy = rnd(16, 34); p.sw = rnd(14, 34); p.a = rnd(0.55, 0.9); p.rot = rnd(0, 6.28); p.vr = rnd(-1, 1); p.img = sprites[(Math.random() * sprites.length) | 0]; }
     return p;
   }
 
   // ── гирлянда ──
-  var bulbs = [];
+  var bulbs = [], swagsN = 3, swagSeg = 0, SAG = 14;
+  function wireY(t) { return 5 + Math.sin(t * Math.PI) * SAG; }
   function buildGarland() {
     bulbs = [];
     if (id !== 'newyear') return;
-    var swags = Math.max(3, Math.round(W / 130)), seg = W / swags, sag = 15;
-    for (var s = 0; s < swags; s++) {
-      var n = Math.max(4, Math.round(seg / 30));
-      for (var i = 0; i <= n; i++) {
-        if (i === n && s < swags - 1) continue;
-        var t = i / n, x = s * seg + t * seg, y = 4 + Math.sin(t * Math.PI) * sag;
-        bulbs.push({ x: x, y: y, c: (s * 3 + i) % bulbSprites.length, ph: rnd(0, 6.28), sp: rnd(1.2, 2.4), edge: (i === 0 || i === n) });
+    swagsN = Math.max(3, Math.round(W / 140)); swagSeg = W / swagsN;
+    var per = Math.max(3, Math.round(swagSeg / 38)), c = 0;
+    for (var s = 0; s < swagsN; s++) {
+      for (var i = 0; i < per; i++) {
+        var t = (i + 0.5) / per;
+        bulbs.push({ x: s * swagSeg + t * swagSeg, y: wireY(t), c: (c++) % bulbSprites.length, ph: rnd(0, 6.28), sp: rnd(1.1, 2.2) });
       }
     }
   }
   function drawGarland(t) {
     if (!bulbs.length) return;
-    var swags = Math.max(3, Math.round(W / 130)), seg = W / swags, sag = 15;
-    ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(60,35,18,0.9)'; ctx.lineWidth = 1.2; ctx.beginPath();
-    for (var s = 0; s < swags; s++) {
-      for (var k = 0; k <= 24; k++) {
-        var tt = k / 24, x = s * seg + tt * seg, y = 4 + Math.sin(tt * Math.PI) * sag;
-        if (s === 0 && k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    // провод: тёмный, с тонким тёплым бликом сверху
+    ctx.globalAlpha = 1; ctx.lineCap = 'round';
+    for (var pass = 0; pass < 2; pass++) {
+      ctx.strokeStyle = pass ? 'rgba(200,140,80,0.35)' : 'rgba(54,32,16,0.95)'; ctx.lineWidth = pass ? 0.8 : 2; ctx.beginPath();
+      for (var s = 0; s < swagsN; s++) {
+        for (var k = 0; k <= 24; k++) {
+          var tt = k / 24, x = s * swagSeg + tt * swagSeg, y = wireY(tt) - (pass ? 0.6 : 0);
+          if (s === 0 && k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
       }
+      ctx.stroke();
     }
-    ctx.stroke();
+    // свечение (складывается со светом под ним), затем сами лампочки
+    ctx.globalCompositeOperation = 'lighter';
     for (var i = 0; i < bulbs.length; i++) {
-      var b = bulbs[i], a = 0.55 + 0.45 * Math.sin(t * b.sp + b.ph);
-      ctx.globalAlpha = a; ctx.drawImage(bulbSprites[b.c], b.x - 7, b.y - 3, 14, 14);
+      var b = bulbs[i], a = 0.5 + 0.5 * Math.sin(t * b.sp + b.ph);
+      ctx.globalAlpha = 0.35 + 0.65 * a; ctx.drawImage(haloSprites[b.c], b.x - 17, b.y - 5, 34, 34);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    for (var j = 0; j < bulbs.length; j++) {
+      var q = bulbs[j], aa = 0.5 + 0.5 * Math.sin(t * q.sp + q.ph);
+      ctx.globalAlpha = 0.72 + 0.28 * aa; ctx.drawImage(bulbSprites[q.c], q.x - 9, q.y - 3, 18, 18);
     }
     ctx.globalAlpha = 1;
   }
