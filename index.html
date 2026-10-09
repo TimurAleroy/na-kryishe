@@ -373,7 +373,7 @@
     }
     .ev-card:active { transform: scale(0.99); border-color: rgba(184,115,51,0.4); }
     .ev-poster { position: relative; aspect-ratio: 4 / 5; background: #140a03; overflow: hidden; }
-    .ev-poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ev-poster img, .ev-poster video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .ev-ph {
       position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
       background: radial-gradient(ellipse 90% 60% at 50% 30%, rgba(184,115,51,0.28) 0%, transparent 70%), linear-gradient(180deg, #2a160a 0%, #140a03 100%);
@@ -398,7 +398,7 @@
     .evd-back { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 14px; padding: 8px 14px 8px 10px; border-radius: 999px; border: 1px solid var(--border); background: rgba(240,223,192,0.04); color: var(--text-sub); font: inherit; font-size: 12.5px; cursor: pointer; }
     .evd-title { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 28px; line-height: 1.15; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text); margin-bottom: 18px; }
     .evd-poster { position: relative; border-radius: 24px; overflow: hidden; border: 1px solid var(--border); background: #140a03; }
-    .evd-poster img { display: block; width: 100%; height: auto; }
+    .evd-poster img, .evd-poster video { display: block; width: 100%; height: auto; }
     .evd-poster.ph { aspect-ratio: 4 / 5; }
     .evd-sec { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 21px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text); margin: 28px 0 14px; }
     .evd-facts { display: flex; flex-wrap: wrap; gap: 14px 32px; padding-top: 14px; border-top: 1px solid var(--border); margin-bottom: 18px; }
@@ -409,7 +409,7 @@
     .evd-book { margin-top: 22px; }
     .evd-other { display: flex; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); margin-bottom: 8px; cursor: pointer; }
     .evd-other .th { position: relative; width: 58px; height: 72px; flex-shrink: 0; border-radius: 12px; overflow: hidden; background: #140a03; }
-    .evd-other .th img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .evd-other .th img, .evd-other .th video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .evd-other .th .ev-ph .d { font-size: 26px; }
     .evd-other .th .ev-ph .m { font-size: 8px; letter-spacing: 2px; }
     .evd-other .th .ev-ph .f { display: none; }
@@ -2435,7 +2435,7 @@
   const preloadedPosters = new Set();
   function preloadPosters(list) {
     for (const e of list) {
-      if (!e.poster || preloadedPosters.has(e.poster)) continue;
+      if (!e.poster || e.posterType === 'video' || preloadedPosters.has(e.poster)) continue;
       preloadedPosters.add(e.poster);
       const im = new Image();
       im.decoding = 'async';
@@ -2482,10 +2482,37 @@
       time: t && !(t[1] === '00' && t[2] === '00') ? `${t[1]}:${t[2]}` : ''
     };
   }
-  function evPosterHTML(e) {
+  // Заглушка с числом и месяцем (когда постера нет или он не загрузился)
+  function evPlaceholderHTML(e) {
     const p = evParts(e.date);
-    return `<div class="ev-ph"><div class="d">${p.day}</div><div class="m">${evEsc(p.monShort)}</div>${e.format ? `<div class="f">${evEsc(e.format)}</div>` : ''}</div>
-      ${e.poster ? `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}" loading="lazy" onerror="this.remove()">` : ''}`;
+    return `<div class="ev-ph"><div class="d">${p.day}</div><div class="m">${evEsc(p.monShort)}</div>${e.format ? `<div class="f">${evEsc(e.format)}</div>` : ''}</div>`;
+  }
+  // Вместо фото может быть короткое видео: без звука, по кругу, играет только пока видно на экране
+  function evMediaHTML(e, lazy) {
+    if (!e.poster) return '';
+    if (e.posterType === 'video') {
+      return `<video class="ev-vid" src="${evEsc(e.poster)}#t=0.1" muted loop playsinline preload="metadata" aria-label="${evEsc(e.name)}" onerror="this.remove()"></video>`;
+    }
+    return `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}"${lazy ? ' loading="lazy"' : ''} onerror="this.remove()">`;
+  }
+  function evPosterHTML(e) {
+    return evPlaceholderHTML(e) + evMediaHTML(e, true);
+  }
+  let evVideoObserver = null;
+  function evWatchVideos(root) {
+    const vids = (root || document).querySelectorAll('video.ev-vid');
+    if (!vids.length) return;
+    if (!('IntersectionObserver' in window)) { vids.forEach(v => { v.muted = true; v.play().catch(() => {}); }); return; }
+    if (!evVideoObserver) {
+      evVideoObserver = new IntersectionObserver(entries => {
+        for (const en of entries) {
+          const v = en.target;
+          if (en.isIntersecting) { v.muted = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          else v.pause();
+        }
+      }, { threshold: 0.35 });
+    }
+    vids.forEach(v => evVideoObserver.observe(v));
   }
 
   function renderEvents(events, el) {
@@ -2507,6 +2534,7 @@
         </div>
       </div>`;
     }).join('');
+    evWatchVideos(el);
   }
 
   function openEventDetail(i) {
@@ -2523,7 +2551,9 @@
       <button class="evd-back" onclick="goBack()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>Афиша</button>
       <div class="evd-title">${evEsc(e.name)}</div>
       <div class="evd-poster${e.poster ? '' : ' ph'}">${e.poster
-        ? `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}" onerror="this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPosterHTML(eventsData[${i}]).replace(/<img[^>]*>/, '');">`
+        ? (e.posterType === 'video'
+          ? `<video class="ev-vid" src="${evEsc(e.poster)}#t=0.1" muted loop playsinline preload="metadata" aria-label="${evEsc(e.name)}" onerror="this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPlaceholderHTML(eventsData[${i}]);"></video>`
+          : `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}" onerror="this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPlaceholderHTML(eventsData[${i}]);">`)
         : evPosterHTML(e)}</div>
       <div class="evd-sec">О событии</div>
       ${facts.length ? `<div class="evd-facts">${facts.map(([l, v]) => `<div><div class="l">${l}:</div><div class="v">${evEsc(v)}</div></div>`).join('')}</div>` : ''}
@@ -2540,6 +2570,7 @@
       }).join('')}` : ''}
       <div style="height:24px"></div>`;
     showScreen('event');
+    evWatchVideos(document.getElementById('eventDetail'));
   }
 
   function bookForEventIdx(i) {
