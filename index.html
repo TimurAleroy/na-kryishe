@@ -3673,91 +3673,216 @@
   cv.setAttribute('aria-hidden', 'true');
   cv.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:100%;z-index:900;pointer-events:none';
   var ctx = cv.getContext('2d');
-  var W = 0, H = 0, DPR = 1;
+  var W = 0, H = 0, DPR = 1, K = 1, SZ = 1;
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth; H = window.innerHeight;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    // на большом экране (телевизор) не рисуем лишних миллионов точек
+    while (W * H * DPR * DPR > 2600000 && DPR > 0.5) DPR = Math.max(0.5, DPR - 0.25);
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    K = clamp((W * H) / (390 * 844), 0.8, 2.2);   // сколько частиц
+    SZ = clamp(H / 760, 0.9, 2.1);                // насколько крупные (на телевизоре крупнее)
   }
 
-  // ── готовые картинки (рисуем один раз, потом только переносим) ──
-  function sprite(size, draw) {
-    var c = document.createElement('canvas'); c.width = c.height = size * 2; var x = c.getContext('2d');
-    x.scale(2, 2); draw(x, size); return c;
+  // ── Готовые картинки: рисуем один раз, потом только переносим ──
+  // Спрайт рисуется с запасом по краям, чтобы размытие не обрезалось
+  var BASE = 36, PAD = 0.15;
+  function sprite(draw) {
+    var c = document.createElement('canvas'); c.width = c.height = BASE * 2; var x = c.getContext('2d');
+    x.scale(2, 2); x.translate(BASE * PAD, BASE * PAD); draw(x, BASE * (1 - 2 * PAD)); return c;
   }
-  function heartPath(x, s) {
-    x.beginPath(); x.moveTo(s / 2, s * 0.9);
-    x.bezierCurveTo(s * 0.05, s * 0.55, s * 0.05, s * 0.12, s * 0.3, s * 0.12);
-    x.bezierCurveTo(s * 0.42, s * 0.12, s * 0.5, s * 0.2, s / 2, s * 0.3);
-    x.bezierCurveTo(s * 0.5, s * 0.2, s * 0.58, s * 0.12, s * 0.7, s * 0.12);
-    x.bezierCurveTo(s * 0.95, s * 0.12, s * 0.95, s * 0.55, s / 2, s * 0.9);
-    x.closePath();
+  // Размытие без фильтров canvas (на части телефонов их нет): уменьшаем вдвое несколько раз и возвращаем обратно
+  function blurred(src, steps) {
+    var cur = src, i, w = src.width, h = src.height, t, x;
+    for (i = 0; i < steps; i++) {
+      w = Math.max(4, w >> 1); h = Math.max(4, h >> 1);
+      t = document.createElement('canvas'); t.width = w; t.height = h; x = t.getContext('2d');
+      x.imageSmoothingEnabled = true; x.drawImage(cur, 0, 0, w, h); cur = t;
+    }
+    var o = document.createElement('canvas'); o.width = src.width; o.height = src.height; x = o.getContext('2d');
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, o.width, o.height);
+    return o;
   }
+  // Один рисунок в трёх «резкостях»: ближе и дальше точки фокуса размыты, как на фотографии
+  function depthSet(src) { return { sharp: src, soft: blurred(src, 1), bokeh: blurred(src, 3) }; }
+  function pick(set, z) { return z < 0.2 ? set.soft : z > 0.88 ? set.bokeh : set.sharp; }
+
+  var TAU = Math.PI * 2;
+  var rnd = function (a, b) { return a + Math.random() * (b - a); };
+  var wind = function (t) { // порывы ветра: общий для всех частиц, поэтому движение выглядит цельным
+    return 0.5 * Math.sin(t * 0.12) + 0.35 * Math.sin(t * 0.31 + 2) + 0.9 * Math.pow(Math.max(0, Math.sin(t * 0.047)), 3);
+  };
+
+  // ── Снег: мягкие точки и настоящие снежинки-кристаллы ──
+  function snowDot(hard) {
+    return sprite(function (x, s) {
+      var g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(hard ? 0.5 : 0.3, 'rgba(255,252,246,' + (hard ? 0.9 : 0.7) + ')');
+      g.addColorStop(1, 'rgba(255,250,240,0)');
+      x.fillStyle = g; x.beginPath(); x.arc(s / 2, s / 2, s / 2, 0, TAU); x.fill();
+    });
+  }
+  function snowCrystal() {
+    var arm = [rnd(0.34, 0.5), rnd(0.62, 0.8)], len = [rnd(0.16, 0.26), rnd(0.1, 0.2)], k;
+    return sprite(function (x, s) {
+      x.translate(s / 2, s / 2); x.lineCap = 'round';
+      x.shadowColor = 'rgba(255,255,255,0.8)'; x.shadowBlur = 3;
+      x.strokeStyle = 'rgba(255,255,255,0.95)'; x.lineWidth = 1.15;
+      var R = s * 0.46;
+      for (k = 0; k < 6; k++) {
+        x.save(); x.rotate(k * TAU / 6); x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -R); x.stroke();
+        [0, 1].forEach(function (j) {
+          var y = -R * arm[j], l = R * len[j] * 2.2;
+          x.beginPath(); x.moveTo(0, y); x.lineTo(-l * 0.7, y - l * 0.7); x.moveTo(0, y); x.lineTo(l * 0.7, y - l * 0.7); x.stroke();
+        });
+        x.restore();
+      }
+      x.fillStyle = 'rgba(255,255,255,0.9)'; x.beginPath(); x.arc(0, 0, 1.3, 0, TAU); x.fill();
+    });
+  }
+
+  // ── Лепесток розы: две стороны (лицевая темнее и насыщеннее, изнанка светлее) ──
   function petalPath(x, s) {
-    x.beginPath(); x.moveTo(s / 2, s * 0.06);
-    x.bezierCurveTo(s * 0.95, s * 0.3, s * 0.85, s * 0.85, s / 2, s * 0.96);
-    x.bezierCurveTo(s * 0.15, s * 0.85, s * 0.05, s * 0.3, s / 2, s * 0.06);
+    x.beginPath(); x.moveTo(s * 0.5, s * 0.97);
+    x.bezierCurveTo(s * 0.16, s * 0.84, s * 0.0, s * 0.52, s * 0.12, s * 0.24);
+    x.bezierCurveTo(s * 0.2, s * 0.05, s * 0.42, s * 0.03, s * 0.5, s * 0.13);
+    x.bezierCurveTo(s * 0.58, s * 0.03, s * 0.8, s * 0.05, s * 0.88, s * 0.24);
+    x.bezierCurveTo(s * 1.0, s * 0.52, s * 0.84, s * 0.84, s * 0.5, s * 0.97);
     x.closePath();
   }
-  function colored(path, fill, edge) {
-    return sprite(24, function (x, s) { path(x, s); x.fillStyle = fill; x.fill(); if (edge) { x.lineWidth = 0.6; x.strokeStyle = edge; x.stroke(); } });
-  }
-  var sprites = [];
-  if (id === 'valentine') {
-    ['#D9788A', '#C85A72', '#E9A3B0', '#B87333', '#F0DFC0'].forEach(function (c) { sprites.push(colored(heartPath, c, 'rgba(255,255,255,0.25)')); });
-  } else if (id === 'march8') {
-    // роза — главный символ 8 Марта: вид сверху, лепестки слоями, в центре завиток
-    var rose = function (dark, mid, light) {
-      return sprite(30, function (x, S) {
-        var cx = S / 2, cy = S / 2, k, an, px, py, g;
-        var layer = function (n, dist, r, off, c0, c1, line) {
-          for (k = 0; k < n; k++) {
-            an = off + k * 6.2832 / n; px = cx + Math.cos(an) * dist; py = cy + Math.sin(an) * dist;
-            g = x.createRadialGradient(px - Math.cos(an) * r * 0.2, py - Math.sin(an) * r * 0.2, 0.5, px, py, r);
-            g.addColorStop(0, c0); g.addColorStop(1, c1);
-            x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill();
-            x.strokeStyle = line; x.lineWidth = 0.7; x.stroke();
-          }
-        };
-        layer(6, 7.2, 7, 0.2, mid, dark, 'rgba(60,0,12,0.35)');
-        layer(5, 4.6, 5.4, 0.9, light, mid, 'rgba(60,0,12,0.3)');
-        layer(4, 2.3, 3.6, 0.4, light, mid, 'rgba(60,0,12,0.3)');
-        x.strokeStyle = dark; x.lineWidth = 0.9; x.lineCap = 'round';
-        x.beginPath(); x.arc(cx, cy, 2.6, 0.5, 4.4); x.stroke();
-        x.beginPath(); x.arc(cx + 0.4, cy + 0.2, 1.4, 3.6, 7.6); x.stroke();
-        x.fillStyle = dark; x.beginPath(); x.arc(cx + 0.2, cy, 0.5, 0, 7); x.fill();
+  function petal(dark, mid, light, back) {
+    return sprite(function (x, s) {
+      var g = x.createLinearGradient(0, s, 0, 0);
+      if (back) { g.addColorStop(0, mid); g.addColorStop(0.5, light); g.addColorStop(1, light); }
+      else { g.addColorStop(0, dark); g.addColorStop(0.5, mid); g.addColorStop(1, light); }
+      petalPath(x, s); x.fillStyle = g; x.fill();
+      x.save(); petalPath(x, s); x.clip();
+      x.strokeStyle = 'rgba(40,0,12,' + (back ? 0.12 : 0.16) + ')'; x.lineWidth = 0.7;
+      [-0.28, -0.1, 0.1, 0.28].forEach(function (d) {
+        x.beginPath(); x.moveTo(s * 0.5, s * 0.97); x.quadraticCurveTo(s * (0.5 + d * 0.9), s * 0.55, s * (0.5 + d * 1.5), s * 0.1); x.stroke();
       });
-    };
-    sprites.push(rose('#A5122F', '#DD3553', '#FF9AAE'), rose('#B81D3C', '#E8506B', '#FFC0CC'), rose('#C8324F', '#F27A92', '#FFE0E6'), rose('#8E1028', '#CF2C49', '#F76F88'));
+      var h = x.createRadialGradient(s * 0.35, s * 0.28, 0, s * 0.35, s * 0.28, s * 0.5);
+      h.addColorStop(0, 'rgba(255,255,255,' + (back ? 0.28 : 0.22) + ')'); h.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = h; x.fillRect(0, 0, s, s);
+      x.restore();
+      petalPath(x, s); x.lineWidth = 0.8; x.strokeStyle = 'rgba(255,255,255,0.2)'; x.stroke();
+    });
   }
-  // ── частицы ──
+
+  // ── Сердечко: глянцевое, с бликом, как фольгированный шарик ──
+  function heartPath(x, s) {
+    x.beginPath(); x.moveTo(s / 2, s * 0.92);
+    x.bezierCurveTo(s * 0.02, s * 0.58, s * 0.0, s * 0.14, s * 0.27, s * 0.1);
+    x.bezierCurveTo(s * 0.4, s * 0.09, s * 0.48, s * 0.18, s / 2, s * 0.28);
+    x.bezierCurveTo(s * 0.52, s * 0.18, s * 0.6, s * 0.09, s * 0.73, s * 0.1);
+    x.bezierCurveTo(s * 1.0, s * 0.14, s * 0.98, s * 0.58, s / 2, s * 0.92);
+    x.closePath();
+  }
+  function heart(light, mid, dark) {
+    return sprite(function (x, s) {
+      var g = x.createRadialGradient(s * 0.36, s * 0.3, s * 0.04, s * 0.5, s * 0.5, s * 0.62);
+      g.addColorStop(0, light); g.addColorStop(0.5, mid); g.addColorStop(1, dark);
+      heartPath(x, s); x.fillStyle = g; x.fill();
+      x.lineWidth = 0.9; x.strokeStyle = 'rgba(255,255,255,0.28)'; x.stroke();
+      x.save(); heartPath(x, s); x.clip();
+      x.translate(s * 0.27, s * 0.27); x.rotate(-0.55);
+      var h = x.createRadialGradient(0, 0, 0, 0, 0, s * 0.17);
+      h.addColorStop(0, 'rgba(255,255,255,0.85)'); h.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = h; x.beginPath(); x.ellipse(0, 0, s * 0.17, s * 0.09, 0, 0, TAU); x.fill();
+      x.restore();
+      var r = x.createLinearGradient(0, s * 0.6, 0, s * 0.92);   // отражённый свет снизу
+      r.addColorStop(0, 'rgba(255,255,255,0)'); r.addColorStop(1, 'rgba(255,230,220,0.18)');
+      heartPath(x, s); x.fillStyle = r; x.fill();
+    });
+  }
+
+  var sets = [], kinds = [];
+  if (id === 'newyear') {
+    sets = [depthSet(snowDot(true)), depthSet(snowDot(false)), depthSet(snowCrystal()), depthSet(snowCrystal()), depthSet(snowCrystal())];
+  } else if (id === 'valentine') {
+    [['#FFD3DB', '#E8758C', '#B53A56'], ['#FFC1CC', '#D9576F', '#9E2B47'], ['#FFE6C8', '#D9955A', '#8A4E1F'], ['#FFF3E0', '#EBCB9A', '#B88A55']].forEach(function (c) { sets.push(depthSet(heart(c[0], c[1], c[2]))); });
+  } else {
+    var pal = [['#6E0B22', '#BC2744', '#E4647C'], ['#8E1A38', '#D8466A', '#F59AB0'], ['#B84A68', '#EE87A0', '#FFD2DC'], ['#C79384', '#F0C4B8', '#FFF1EB'], ['#7A1028', '#CA3552', '#EE8096']];
+    pal.forEach(function (c) { sets.push({ front: depthSet(petal(c[0], c[1], c[2], false)), back: depthSet(petal(c[0], c[1], c[2], true)) }); });
+  }
+
+  // ── Частицы ──
   var parts = [];
-  function count() { var k = Math.min(Math.max(W / 390, 0.8), 1.6); return Math.round((id === 'newyear' ? 46 : 20) * k); }
-  function spawn(top) {
-    var p = { x: rnd(0, W), y: top ? rnd(-H * 0.1, -8) : rnd(-8, H), ph: rnd(0, 6.28) };
-    if (id === 'newyear') { p.r = rnd(1, 3.2); p.vy = rnd(14, 34) * (p.r / 2.2); p.sw = rnd(8, 22); p.a = rnd(0.5, 0.95); }
-    else { p.s = id === 'valentine' ? rnd(9, 18) : rnd(17, 28); p.vy = rnd(16, 34); p.sw = rnd(14, 34); p.a = rnd(0.55, 0.9); p.rot = rnd(0, 6.28); p.vr = rnd(-1, 1); p.img = sprites[(Math.random() * sprites.length) | 0]; }
+  function count() { return Math.round((id === 'newyear' ? 62 : id === 'valentine' ? 16 : 28) * K); }
+  function spawn(init, zKeep) {
+    var z = zKeep === undefined ? Math.random() : zKeep, p = { z: z, ph: rnd(0, TAU), ph2: rnd(0, TAU), set: sets[(Math.random() * sets.length) | 0] };
+    p.x = rnd(-0.2 * W, 1.1 * W);
+    if (id === 'newyear') {
+      var s = 0.4 + z * 0.9;
+      p.crystal = z > 0.5 && Math.random() < 0.3;
+      if (p.crystal) p.set = sets[2 + ((Math.random() * 3) | 0)]; else p.set = sets[Math.random() < 0.55 ? 0 : 1];
+      p.d = (p.crystal ? rnd(10, 15) : rnd(3.2, 6.2)) * s * SZ / 0.7;
+      if (z > 0.88) p.d = rnd(22, 40) * SZ / 0.7;           // близкая снежинка не в фокусе — большое мягкое пятно
+      p.vy = (13 + 46 * z) * Math.sqrt(SZ) * rnd(0.85, 1.15);
+      p.sway = rnd(6, 18) * (0.5 + z) * SZ; p.f = rnd(0.45, 1.25);
+      p.spin = p.crystal ? rnd(-0.6, 0.6) : 0; p.rot = rnd(0, TAU);
+      p.a = (0.5 + 0.5 * z) * rnd(0.8, 1) * (p.crystal ? 0.85 : 1); if (z > 0.88) p.a = rnd(0.28, 0.42);
+      p.y = init ? rnd(-0.05 * H, H) : -p.d - rnd(0, H * 0.12);
+    } else if (id === 'valentine') {
+      p.d = rnd(15, 26) * (0.55 + z * 0.8) * SZ / 0.7; if (z > 0.88) p.d = rnd(30, 46) * SZ / 0.7;
+      p.vy = -(13 + 22 * z) * Math.sqrt(SZ) * rnd(0.85, 1.15);          // поднимаются, как воздушные шарики
+      p.sway = rnd(12, 28) * (0.5 + z) * SZ; p.f = rnd(0.35, 0.8);
+      p.a = (0.62 + 0.38 * z) * rnd(0.85, 1); if (z > 0.88) p.a = rnd(0.3, 0.45); if (z < 0.2) p.a *= 0.8;
+      p.y = init ? rnd(-0.05 * H, 1.05 * H) : H + p.d + rnd(0, H * 0.15);
+    } else {
+      p.d = rnd(17, 29) * (0.55 + z * 0.75) * SZ / 0.7; if (z > 0.88) p.d = rnd(32, 48) * SZ / 0.7;
+      p.vy = (28 + 40 * z) * Math.sqrt(SZ) * rnd(0.85, 1.15);
+      p.sway = rnd(20, 46) * (0.5 + z) * SZ; p.w = rnd(1.3, 2.4);       // как быстро лепесток переворачивается
+      p.rot = rnd(0, TAU); p.a = (0.6 + 0.4 * z) * rnd(0.88, 1); if (z > 0.88) p.a = rnd(0.35, 0.5);
+      p.y = init ? rnd(-0.05 * H, H) : -p.d - rnd(0, H * 0.12);
+    }
+    p.bx = p.x;
     return p;
   }
 
-  // ── кадр ──
+  // ── Кадр ──
   var last = 0, running = false, raf = 0, T0 = performance.now();
   function frame(now) {
     raf = requestAnimationFrame(frame);
     if (now - last < 33) return; // ~30 кадров в секунду — хватает и бережёт батарею
     var dt = Math.min((now - last) / 1000, 0.1); last = now;
-    var t = (now - T0) / 1000;
+    var t = (now - T0) / 1000, wd = wind(t), i, p, x, y, img, a, sc, ph, cs;
     ctx.clearRect(0, 0, W, H);
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i];
-      p.y += p.vy * dt; var x = p.x + Math.sin(t * 0.8 + p.ph) * p.sw;
-      if (p.y > H + 24) { parts[i] = p = spawn(true); x = p.x; }
-      ctx.globalAlpha = p.a;
-      if (id === 'newyear') { ctx.fillStyle = '#FFF6E6'; ctx.beginPath(); ctx.arc(x, p.y, p.r, 0, 7); ctx.fill(); }
-      else {
-        p.rot += p.vr * dt; ctx.save(); ctx.translate(x, p.y); ctx.rotate(p.rot + Math.sin(t + p.ph) * 0.5);
-        ctx.drawImage(p.img, -p.s / 2, -p.s / 2, p.s, p.s); ctx.restore();
+    for (i = 0; i < parts.length; i++) {
+      p = parts[i];
+      if (id === 'newyear') {
+        p.bx += wd * (0.35 + p.z) * 34 * SZ * dt;
+        p.y += p.vy * dt;
+        x = p.bx + Math.sin(t * p.f + p.ph) * p.sway + Math.sin(t * 3.1 + p.ph2) * 1.4;   // плавное качание и лёгкая дрожь
+        y = p.y; p.rot += p.spin * dt; a = p.a;
+        if (y > H + p.d) { parts[i] = spawn(false, p.z); continue; }
+        ctx.globalAlpha = a;
+        if (p.crystal) { ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot); ctx.drawImage(pick(p.set, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore(); }
+        else ctx.drawImage(pick(p.set, p.z), x - p.d / 2, y - p.d / 2, p.d, p.d);
+      } else if (id === 'valentine') {
+        p.bx += wd * (0.3 + p.z) * 16 * SZ * dt;
+        p.y += p.vy * dt;
+        x = p.bx + Math.sin(t * p.f + p.ph) * p.sway; y = p.y;
+        if (y < -p.d) { parts[i] = spawn(false, p.z); continue; }
+        a = p.a * clamp(y / (H * 0.14), 0, 1);                                              // у верхнего края плавно растворяются
+        ctx.globalAlpha = a; ctx.save(); ctx.translate(x, y);
+        ctx.rotate(Math.sin(t * 0.8 + p.ph) * 0.32 + wd * 0.05);                             // покачиваются
+        ctx.scale(0.84 + 0.16 * Math.cos(t * 0.65 + p.ph2), 1);                               // и медленно поворачиваются боком
+        ctx.drawImage(pick(p.set, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore();
+      } else {
+        ph = t * p.w + p.ph;
+        p.bx += wd * (0.5 + p.z) * 26 * SZ * dt;
+        p.y += p.vy * (1.12 - 0.62 * Math.abs(Math.cos(ph))) * dt;                         // боком падает быстрее, плашмя парит
+        x = p.bx + Math.sin(ph) * p.sway; y = p.y;
+        if (y > H + p.d) { parts[i] = spawn(false, p.z); continue; }
+        cs = Math.cos(ph * 0.8 + p.ph2);                                                     // переворот: видим то лицо, то изнанку
+        sc = Math.abs(cs) < 0.07 ? 0.07 : cs;
+        a = p.a * (0.82 + 0.18 * Math.abs(cs));
+        img = (sc >= 0 ? p.set.front : p.set.back);
+        ctx.globalAlpha = a; ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot + Math.sin(ph) * 0.75);
+        ctx.scale(1, Math.abs(sc)); ctx.drawImage(pick(img, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore();
       }
     }
     ctx.globalAlpha = 1;
@@ -3767,7 +3892,8 @@
   var onResize = function () { resize(); };
   var onVis = function () { document.hidden ? stop() : start(); };
   document.body.appendChild(cv); resize();
-  for (var i = 0; i < count(); i++) parts.push(spawn(false));
+  for (var i = 0; i < count(); i++) parts.push(spawn(true));
+  parts.sort(function (a, b) { return a.z - b.z; });   // дальние рисуются первыми, ближние поверх
   window.addEventListener('resize', onResize);
   document.addEventListener('visibilitychange', onVis);
   start();
