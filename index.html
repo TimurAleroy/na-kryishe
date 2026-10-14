@@ -3649,14 +3649,14 @@
 </script>
 <!-- СЕЗОН: праздничная анимация поверх приложения (только у гостей). Какой эффект и когда — решает основатель в приложении
      сотрудников (Сервис → Сезоны); приложение спрашивает у сервера, что показывать сегодня (/api/season).
-     Эффекты: newyear (снег), valentine (сердечки), march8 (розы).
+     Эффекты: newyear (снег), valentine (сердечки), march8 (лепестки роз), halloween (огоньки, листья, дымка, летучие мыши).
      Не мешает: не ловит нажатия, уважает «уменьшить движение» в настройках телефона, стоит на паузе, когда приложение не на экране.
      Не отвечает сервер — анимации просто нет. Посмотреть как есть: добавить к адресу ?season=newyear, ?season=valentine или ?season=march8 (?season=off — выключить). -->
 <script>
 (function () {
   'use strict';
   var API = 'https://notion-proxy-na-kryishe-production.up.railway.app/api/season';
-  var EFFECTS = ['newyear', 'valentine', 'march8'];
+  var EFFECTS = ['newyear', 'valentine', 'march8', 'halloween'];
   function forced() {
     try {
       var q = new URLSearchParams(location.search).get('season') || (location.hash.match(/season=([a-z0-9]+)/) || [])[1] || '';
@@ -3743,31 +3743,66 @@
     });
   }
 
-  // ── Лепесток розы: две стороны (лицевая темнее и насыщеннее, изнанка светлее) ──
-  function petalPath(x, s) {
+  // ── Роза: цельный цветок сверху (спираль из лепестков) и отдельный лепесток с загнутым краем ──
+  function petalPath(x, s) {   // яйцевидный: у основания узкий, сверху широкий и округлый, без «сердечной» выемки
     x.beginPath(); x.moveTo(s * 0.5, s * 0.97);
-    x.bezierCurveTo(s * 0.16, s * 0.84, s * 0.0, s * 0.52, s * 0.12, s * 0.24);
-    x.bezierCurveTo(s * 0.2, s * 0.05, s * 0.42, s * 0.03, s * 0.5, s * 0.13);
-    x.bezierCurveTo(s * 0.58, s * 0.03, s * 0.8, s * 0.05, s * 0.88, s * 0.24);
-    x.bezierCurveTo(s * 1.0, s * 0.52, s * 0.84, s * 0.84, s * 0.5, s * 0.97);
+    x.bezierCurveTo(s * 0.3, s * 0.92, s * 0.03, s * 0.7, s * 0.05, s * 0.4);
+    x.bezierCurveTo(s * 0.07, s * 0.16, s * 0.3, s * 0.03, s * 0.54, s * 0.06);
+    x.bezierCurveTo(s * 0.78, s * 0.09, s * 0.97, s * 0.22, s * 0.95, s * 0.46);
+    x.bezierCurveTo(s * 0.93, s * 0.72, s * 0.7, s * 0.92, s * 0.5, s * 0.97);
     x.closePath();
   }
   function petal(dark, mid, light, back) {
     return sprite(function (x, s) {
       var g = x.createLinearGradient(0, s, 0, 0);
-      if (back) { g.addColorStop(0, mid); g.addColorStop(0.5, light); g.addColorStop(1, light); }
+      if (back) { g.addColorStop(0, mid); g.addColorStop(0.55, light); g.addColorStop(1, light); }
       else { g.addColorStop(0, dark); g.addColorStop(0.5, mid); g.addColorStop(1, light); }
       petalPath(x, s); x.fillStyle = g; x.fill();
       x.save(); petalPath(x, s); x.clip();
-      x.strokeStyle = 'rgba(40,0,12,' + (back ? 0.12 : 0.16) + ')'; x.lineWidth = 0.7;
-      [-0.28, -0.1, 0.1, 0.28].forEach(function (d) {
-        x.beginPath(); x.moveTo(s * 0.5, s * 0.97); x.quadraticCurveTo(s * (0.5 + d * 0.9), s * 0.55, s * (0.5 + d * 1.5), s * 0.1); x.stroke();
+      x.strokeStyle = 'rgba(40,0,12,' + (back ? 0.1 : 0.15) + ')'; x.lineWidth = 0.7;
+      [-0.3, -0.12, 0.06, 0.24].forEach(function (d) {          // тонкие прожилки веером от основания
+        x.beginPath(); x.moveTo(s * 0.5, s * 0.97); x.quadraticCurveTo(s * (0.5 + d * 1.1), s * 0.55, s * (0.5 + d * 1.7), s * 0.12); x.stroke();
       });
-      var h = x.createRadialGradient(s * 0.35, s * 0.28, 0, s * 0.35, s * 0.28, s * 0.5);
-      h.addColorStop(0, 'rgba(255,255,255,' + (back ? 0.28 : 0.22) + ')'); h.addColorStop(1, 'rgba(255,255,255,0)');
+      var h = x.createRadialGradient(s * 0.38, s * 0.3, 0, s * 0.38, s * 0.3, s * 0.5);
+      h.addColorStop(0, 'rgba(255,255,255,' + (back ? 0.26 : 0.2) + ')'); h.addColorStop(1, 'rgba(255,255,255,0)');
       x.fillStyle = h; x.fillRect(0, 0, s, s);
+      // загнутый верхний край — у розы он светлее и чуть закручен наружу
+      x.lineCap = 'round';
+      x.beginPath(); x.moveTo(s * 0.1, s * 0.4); x.bezierCurveTo(s * 0.12, s * 0.17, s * 0.32, s * 0.07, s * 0.54, s * 0.1);
+      x.bezierCurveTo(s * 0.76, s * 0.13, s * 0.92, s * 0.25, s * 0.9, s * 0.46);
+      x.lineWidth = s * 0.075; x.strokeStyle = back ? 'rgba(255,255,255,0.3)' : 'rgba(255,235,240,0.34)'; x.stroke();
+      x.beginPath(); x.moveTo(s * 0.14, s * 0.46); x.bezierCurveTo(s * 0.17, s * 0.26, s * 0.34, s * 0.17, s * 0.54, s * 0.19);
+      x.bezierCurveTo(s * 0.72, s * 0.21, s * 0.86, s * 0.3, s * 0.85, s * 0.5);
+      x.lineWidth = s * 0.05; x.strokeStyle = 'rgba(60,0,18,' + (back ? 0.1 : 0.16) + ')'; x.stroke();   // тень под загибом
       x.restore();
-      petalPath(x, s); x.lineWidth = 0.8; x.strokeStyle = 'rgba(255,255,255,0.2)'; x.stroke();
+      petalPath(x, s); x.lineWidth = 0.8; x.strokeStyle = 'rgba(255,255,255,0.18)'; x.stroke();
+    });
+  }
+  // Роза сверху: внешние лепестки, за ними всё меньше и темнее, в центре тугой бутон-спираль.
+  // Тени между слоями делают цветок узнаваемым даже размером с ноготь.
+  function rose(dark, mid, light) {
+    return sprite(function (x, s) {
+      var R = s * 0.5, i, k;
+      x.translate(s / 2, s / 2);
+      function lobe(ang, dist, r, c0, c1, stroke) {
+        var cx = Math.cos(ang) * dist, cy = Math.sin(ang) * dist;
+        var g = x.createRadialGradient(cx + Math.cos(ang) * r * 0.5, cy + Math.sin(ang) * r * 0.5, r * 0.1, cx - Math.cos(ang) * r * 0.15, cy - Math.sin(ang) * r * 0.15, r * 1.15);
+        g.addColorStop(0, c0); g.addColorStop(1, c1);
+        x.save(); x.shadowColor = 'rgba(40,0,12,0.55)'; x.shadowBlur = 2.2;
+        x.beginPath(); x.arc(cx, cy, r, 0, TAU); x.fillStyle = g; x.fill(); x.restore();
+        x.beginPath(); x.arc(cx, cy, r, 0, TAU); x.lineWidth = 0.55; x.strokeStyle = stroke; x.stroke();
+      }
+      var rot = 0.3;
+      for (i = 0; i < 6; i++) lobe(rot + i * TAU / 6, R * 0.5, R * 0.5, light, mid, 'rgba(60,0,18,0.28)');                         // внешний круг
+      for (i = 0; i < 5; i++) lobe(rot + 0.5 + i * TAU / 5, R * 0.36, R * 0.38, light, mid, 'rgba(60,0,18,0.32)');                 // второй
+      for (i = 0; i < 4; i++) lobe(rot + 1.3 + i * TAU / 4, R * 0.2, R * 0.27, mid, dark, 'rgba(50,0,14,0.4)');                    // третий
+      lobe(rot + 2.1, R * 0.07, R * 0.17, mid, dark, 'rgba(50,0,14,0.5)');                                                        // сердцевина
+      x.beginPath();                                                                                                              // спираль в центре
+      for (k = 0; k <= 40; k++) { var a = k / 40 * TAU * 1.6 + 0.5, rr = R * 0.15 * (k / 40); x[k ? 'lineTo' : 'moveTo'](Math.cos(a) * rr, Math.sin(a) * rr); }
+      x.lineWidth = 0.7; x.strokeStyle = 'rgba(40,0,10,0.6)'; x.stroke();
+      var h = x.createRadialGradient(-R * 0.3, -R * 0.35, 0, -R * 0.3, -R * 0.35, R * 0.7);   // мягкий блик
+      h.addColorStop(0, 'rgba(255,255,255,0.22)'); h.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = h; x.beginPath(); x.arc(0, 0, R, 0, TAU); x.fill();
     });
   }
 
@@ -3798,20 +3833,110 @@
     });
   }
 
-  var sets = [], kinds = [];
+  // ── Хэллоуин: тёплые огоньки, осенние листья, дымка и летучие мыши (без мрака, в тоне бара) ──
+  function emberGlow() {
+    return sprite(function (x, s) {
+      var g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      g.addColorStop(0, 'rgba(255,238,196,1)'); g.addColorStop(0.16, 'rgba(255,176,78,0.95)');
+      g.addColorStop(0.5, 'rgba(214,104,30,0.36)'); g.addColorStop(1, 'rgba(184,90,20,0)');
+      x.fillStyle = g; x.beginPath(); x.arc(s / 2, s / 2, s / 2, 0, TAU); x.fill();
+    });
+  }
+  function fogPuff() {
+    return sprite(function (x, s) {
+      var g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      g.addColorStop(0, 'rgba(226,178,130,0.6)'); g.addColorStop(0.55, 'rgba(210,160,115,0.22)'); g.addColorStop(1, 'rgba(200,150,110,0)');
+      x.fillStyle = g; x.beginPath(); x.arc(s / 2, s / 2, s / 2, 0, TAU); x.fill();
+    });
+  }
+  function leafPath(x, s) {
+    x.beginPath(); x.moveTo(s * 0.5, s * 0.98);
+    x.bezierCurveTo(s * 0.1, s * 0.8, s * 0.0, s * 0.4, s * 0.5, s * 0.02);
+    x.bezierCurveTo(s * 1.0, s * 0.4, s * 0.9, s * 0.8, s * 0.5, s * 0.98);
+    x.closePath();
+  }
+  function leaf(dark, mid, light, back) {
+    return sprite(function (x, s) {
+      var g = x.createLinearGradient(0, s, 0, 0);
+      if (back) { g.addColorStop(0, mid); g.addColorStop(1, light); } else { g.addColorStop(0, dark); g.addColorStop(0.55, mid); g.addColorStop(1, light); }
+      leafPath(x, s); x.fillStyle = g; x.fill();
+      x.save(); leafPath(x, s); x.clip();
+      x.strokeStyle = 'rgba(50,16,4,' + (back ? 0.16 : 0.22) + ')'; x.lineWidth = 0.8; x.lineCap = 'round';
+      x.beginPath(); x.moveTo(s * 0.5, s * 0.98); x.lineTo(s * 0.5, s * 0.08); x.stroke();
+      [0.3, 0.46, 0.62, 0.78].forEach(function (y) {
+        x.beginPath(); x.moveTo(s * 0.5, s * y + s * 0.1); x.quadraticCurveTo(s * 0.32, s * y, s * 0.16, s * (y - 0.1)); x.stroke();
+        x.beginPath(); x.moveTo(s * 0.5, s * y + s * 0.1); x.quadraticCurveTo(s * 0.68, s * y, s * 0.84, s * (y - 0.1)); x.stroke();
+      });
+      x.restore();
+    });
+  }
+
+  // Тыква: рёбра, хвостик; у «фонаря» вырезано лицо, внутри тёплый свет свечи
+  function haloGlow() {
+    return sprite(function (x, s) {
+      var g = x.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      g.addColorStop(0, 'rgba(255,176,70,0.55)'); g.addColorStop(0.45, 'rgba(230,120,36,0.22)'); g.addColorStop(1, 'rgba(200,90,20,0)');
+      x.fillStyle = g; x.beginPath(); x.arc(s / 2, s / 2, s / 2, 0, TAU); x.fill();
+    });
+  }
+  function pumpkin(face, c) {   // c = [тёмный, средний, светлый]
+    return sprite(function (x, s) {
+      var cy = s * 0.6, ry = s * 0.37;
+      // хвостик
+      x.beginPath(); x.moveTo(s * 0.45, s * 0.3); x.quadraticCurveTo(s * 0.46, s * 0.15, s * 0.42, s * 0.1);
+      x.lineTo(s * 0.56, s * 0.09); x.quadraticCurveTo(s * 0.55, s * 0.17, s * 0.57, s * 0.3); x.closePath();
+      var sg = x.createLinearGradient(s * 0.42, 0, s * 0.58, 0); sg.addColorStop(0, '#3E4A16'); sg.addColorStop(0.5, '#6B6A22'); sg.addColorStop(1, '#3A3A12');
+      x.fillStyle = sg; x.fill(); x.lineWidth = 0.5; x.strokeStyle = 'rgba(30,20,4,0.6)'; x.stroke();
+      // тело из долек: сначала крайние (ниже), потом ближе к центру; силуэт получается округлым
+      [[-0.3, 0.2, 0.74], [0.3, 0.2, 0.74], [-0.16, 0.235, 0.9], [0.16, 0.235, 0.9], [0, 0.24, 1]].forEach(function (L) {
+        var cx = s * (0.5 + L[0]), rx = s * L[1], g = x.createLinearGradient(cx - rx, 0, cx + rx, 0);
+        g.addColorStop(0, c[0]); g.addColorStop(0.38, c[2]); g.addColorStop(0.72, c[1]); g.addColorStop(1, c[0]);
+        x.beginPath(); x.ellipse(cx, cy + (1 - L[2]) * ry * 0.35, rx, ry * L[2], 0, 0, TAU); x.fillStyle = g; x.fill();
+        x.lineWidth = 0.6; x.strokeStyle = 'rgba(50,14,0,0.55)'; x.stroke();
+      });
+      // низ слегка темнее, как на настоящей тыкве
+      var sh = x.createLinearGradient(0, cy - ry * 0.2, 0, cy + ry);
+      sh.addColorStop(0, 'rgba(40,10,0,0)'); sh.addColorStop(1, 'rgba(40,10,0,0.35)');
+      x.fillStyle = sh; x.beginPath(); x.ellipse(s * 0.5, cy, s * 0.5, ry, 0, 0, TAU); x.fill();
+      if (face) {   // лицо вырезано и светится изнутри свечой
+        x.beginPath();
+        x.moveTo(s * 0.23, s * 0.57); x.lineTo(s * 0.42, s * 0.57); x.lineTo(s * 0.325, s * 0.4); x.closePath();      // глаза
+        x.moveTo(s * 0.58, s * 0.57); x.lineTo(s * 0.77, s * 0.57); x.lineTo(s * 0.675, s * 0.4); x.closePath();
+        x.moveTo(s * 0.5, s * 0.59); x.lineTo(s * 0.44, s * 0.675); x.lineTo(s * 0.56, s * 0.675); x.closePath();      // нос
+        x.moveTo(s * 0.18, s * 0.69); x.lineTo(s * 0.275, s * 0.83); x.lineTo(s * 0.355, s * 0.76); x.lineTo(s * 0.435, s * 0.88);   // рот с зубами
+        x.lineTo(s * 0.5, s * 0.795); x.lineTo(s * 0.565, s * 0.88); x.lineTo(s * 0.645, s * 0.76); x.lineTo(s * 0.725, s * 0.83);
+        x.lineTo(s * 0.82, s * 0.69); x.quadraticCurveTo(s * 0.5, s * 0.75, s * 0.18, s * 0.69); x.closePath();
+        var fg = x.createRadialGradient(s * 0.5, s * 0.64, 0, s * 0.5, s * 0.64, s * 0.4);
+        fg.addColorStop(0, '#FFF6C4'); fg.addColorStop(0.5, '#FFD25A'); fg.addColorStop(1, '#FFA630');
+        x.fillStyle = fg; x.fill();
+        x.lineWidth = 0.8; x.lineJoin = 'round'; x.strokeStyle = 'rgba(60,16,0,0.85)'; x.stroke();
+      }
+    });
+  }
+
+  var sets = [], emberSet = null, fogSprite = null, haloSprite = null, roseSets = [], pumpSets = [];
   if (id === 'newyear') {
     sets = [depthSet(snowDot(true)), depthSet(snowDot(false)), depthSet(snowCrystal()), depthSet(snowCrystal()), depthSet(snowCrystal())];
   } else if (id === 'valentine') {
     [['#FFD3DB', '#E8758C', '#B53A56'], ['#FFC1CC', '#D9576F', '#9E2B47'], ['#FFE6C8', '#D9955A', '#8A4E1F'], ['#FFF3E0', '#EBCB9A', '#B88A55']].forEach(function (c) { sets.push(depthSet(heart(c[0], c[1], c[2]))); });
-  } else {
+  } else if (id === 'march8') {
     var pal = [['#6E0B22', '#BC2744', '#E4647C'], ['#8E1A38', '#D8466A', '#F59AB0'], ['#B84A68', '#EE87A0', '#FFD2DC'], ['#C79384', '#F0C4B8', '#FFF1EB'], ['#7A1028', '#CA3552', '#EE8096']];
     pal.forEach(function (c) { sets.push({ front: depthSet(petal(c[0], c[1], c[2], false)), back: depthSet(petal(c[0], c[1], c[2], true)) }); });
+    pal.slice(0, 4).forEach(function (c) { roseSets.push(depthSet(rose(c[0], c[1], c[2]))); });
+  } else if (id === 'halloween') {
+    emberSet = depthSet(emberGlow()); fogSprite = fogPuff(); haloSprite = haloGlow();
+    [['#4A1A04', '#9A4410', '#C8741F'], ['#5A2206', '#B2540F', '#DE8A2E']].forEach(function (c) {
+      pumpSets.push({ face: true, set: depthSet(pumpkin(true, c)) }, { face: true, set: depthSet(pumpkin(true, c)) }, { face: false, set: depthSet(pumpkin(false, [c[0], c[1], c[2]])) });
+    });
+    [['#5E2108', '#A8480F', '#E0902C'], ['#702810', '#C0601A', '#EDAB4A'], ['#4A1A08', '#8E3A10', '#C9772A'], ['#7A3A12', '#C98A2E', '#F0CF7A']].forEach(function (c) {
+      sets.push({ front: depthSet(leaf(c[0], c[1], c[2], false)), back: depthSet(leaf(c[0], c[1], c[2], true)) });
+    });
   }
 
   // ── Частицы ──
   var parts = [];
-  function count() { return Math.round((id === 'newyear' ? 62 : id === 'valentine' ? 16 : 28) * K); }
-  function spawn(init, zKeep) {
+  function count() { return Math.round((id === 'newyear' ? 62 : id === 'valentine' ? 16 : id === 'halloween' ? 40 : 28) * K); }
+  function spawn(init, zKeep, kindKeep) {
     var z = zKeep === undefined ? Math.random() : zKeep, p = { z: z, ph: rnd(0, TAU), ph2: rnd(0, TAU), set: sets[(Math.random() * sets.length) | 0] };
     p.x = rnd(-0.2 * W, 1.1 * W);
     if (id === 'newyear') {
@@ -3831,7 +3956,40 @@
       p.sway = rnd(12, 28) * (0.5 + z) * SZ; p.f = rnd(0.35, 0.8);
       p.a = (0.62 + 0.38 * z) * rnd(0.85, 1); if (z > 0.88) p.a = rnd(0.3, 0.45); if (z < 0.2) p.a *= 0.8;
       p.y = init ? rnd(-0.05 * H, 1.05 * H) : H + p.d + rnd(0, H * 0.15);
+    } else if (id === 'halloween') {
+      p.kind = kindKeep || (Math.random() < 0.1 ? 'pumpkin' : Math.random() < 0.8 ? 'ember' : 'leaf');
+      if (p.kind === 'pumpkin') {
+        if (zKeep === undefined) p.z = z = rnd(0.3, 0.97);                                      // тыквы не бывают совсем далёкими: лицо должно читаться
+        var pk = pumpSets[(Math.random() * pumpSets.length) | 0]; p.set = pk.set; p.face = pk.face;
+        p.d = rnd(32, 46) * (0.55 + z * 0.7) * SZ / 0.7; if (z > 0.88) p.d = rnd(64, 92) * SZ / 0.7;
+        p.vy = -(9 + 15 * z) * Math.sqrt(SZ) * rnd(0.85, 1.15);                                 // плывут вверх, как бумажные фонарики
+        p.sway = rnd(10, 24) * (0.5 + z) * SZ; p.f = rnd(0.3, 0.7); p.fl = rnd(1.4, 3);
+        p.a = (0.78 + 0.22 * z) * rnd(0.88, 1); if (z > 0.88) p.a = rnd(0.24, 0.34);
+        p.y = init ? rnd(-0.05 * H, 1.05 * H) : H + p.d + rnd(0, H * 0.2);
+      } else if (p.kind === 'ember') {
+        p.set = emberSet; p.d = rnd(5, 11) * (0.5 + z * 0.7) * SZ / 0.7; if (z > 0.88) p.d = rnd(26, 44) * SZ / 0.7;
+        p.vy = -(8 + 20 * z) * Math.sqrt(SZ) * rnd(0.8, 1.2);                                  // огоньки медленно поднимаются, как искры от камина
+        p.sway = rnd(8, 22) * (0.5 + z) * SZ; p.f = rnd(0.4, 1.1); p.fl = rnd(1.2, 3.4);
+        p.a = (0.55 + 0.45 * z) * rnd(0.75, 1); if (z > 0.88) p.a = rnd(0.18, 0.3);
+        p.y = init ? rnd(-0.05 * H, 1.05 * H) : H + p.d + rnd(0, H * 0.15);
+      } else {
+        p.d = rnd(15, 24) * (0.55 + z * 0.7) * SZ / 0.7; if (z > 0.88) p.d = rnd(30, 44) * SZ / 0.7;
+        p.vy = (26 + 34 * z) * Math.sqrt(SZ) * rnd(0.85, 1.15);
+        p.sway = rnd(18, 40) * (0.5 + z) * SZ; p.w = rnd(1.1, 2.1); p.rot = rnd(0, TAU);
+        p.a = (0.62 + 0.38 * z) * rnd(0.88, 1); if (z > 0.88) p.a = rnd(0.35, 0.5);
+        p.y = init ? rnd(-0.05 * H, H) : -p.d - rnd(0, H * 0.12);
+      }
     } else {
+      p.kind = kindKeep || (Math.random() < 0.3 ? 'rose' : 'petal');
+      if (p.kind === 'rose') {                                    // целый цветок: крупнее лепестка, покачивается и не кувыркается
+        p.set = roseSets[(Math.random() * roseSets.length) | 0];
+        p.d = rnd(26, 40) * (0.55 + z * 0.75) * SZ / 0.7; if (z > 0.88) p.d = rnd(52, 74) * SZ / 0.7;
+        p.vy = (20 + 28 * z) * Math.sqrt(SZ) * rnd(0.85, 1.15);
+        p.sway = rnd(14, 32) * (0.5 + z) * SZ; p.w = rnd(0.5, 1); p.spin = rnd(-0.35, 0.35); p.rot = rnd(0, TAU);
+        p.a = (0.7 + 0.3 * z) * rnd(0.9, 1); if (z > 0.88) p.a = rnd(0.3, 0.42);
+        p.y = init ? rnd(-0.05 * H, H) : -p.d - rnd(0, H * 0.12);
+        p.bx = p.x; return p;
+      }
       p.d = rnd(17, 29) * (0.55 + z * 0.75) * SZ / 0.7; if (z > 0.88) p.d = rnd(32, 48) * SZ / 0.7;
       p.vy = (28 + 40 * z) * Math.sqrt(SZ) * rnd(0.85, 1.15);
       p.sway = rnd(20, 46) * (0.5 + z) * SZ; p.w = rnd(1.3, 2.4);       // как быстро лепесток переворачивается
@@ -3842,6 +4000,41 @@
     return p;
   }
 
+  // ── Хэллоуин: дымка у земли и летучие мыши ──
+  var fogs = [], bats = [];
+  function initHalloween() {
+    var i, n = clamp(Math.round(2 * K), 2, 4);
+    fogs = [];
+    for (i = 0; i < 4; i++) fogs.push({ cx: (i + 0.5) / 4 + rnd(-0.08, 0.08), cy: rnd(0.68, 1.0), s: rnd(0.8, 1.25), ph: rnd(0, TAU), sp: rnd(0.03, 0.07), a: rnd(0.1, 0.16) });
+    bats = [];
+    for (i = 0; i < n; i++) bats.push({ on: false, t: rnd(0.4, 2.5 + i * 3) });
+  }
+  function startBat(b) {
+    b.on = true; b.dir = Math.random() < 0.5 ? 1 : -1; b.x = b.dir > 0 ? -50 : W + 50; b.y = rnd(0.1, 0.6) * H;
+    b.s = rnd(0.7, 1.1) * SZ; b.v = rnd(70, 120) * SZ; b.ph = rnd(0, TAU); b.fr = rnd(9, 13);
+    b.wf = rnd(0.6, 1.2); b.wa = rnd(10, 26) * SZ; b.ph2 = rnd(0, TAU);
+  }
+  function drawBat(x, y, s, dir, f) {   // f от -1 (крылья вниз) до 1 (вверх)
+    var sd, tipY = -9 * f + 1;
+    ctx.save(); ctx.translate(x, y); ctx.scale(dir * s, s); ctx.rotate(-0.1 + f * 0.05);
+    ctx.fillStyle = '#0b0502'; ctx.strokeStyle = 'rgba(214,140,70,0.45)'; ctx.lineWidth = 0.8 / s; ctx.lineJoin = 'round';
+    for (sd = -1; sd <= 1; sd += 2) {
+      ctx.beginPath(); ctx.moveTo(sd * 2, -1);
+      ctx.quadraticCurveTo(sd * 6, -8 - 3 * f, sd * 11, -6 - 6 * f);          // плечо и локоть
+      ctx.quadraticCurveTo(sd * 18, -8 - 8 * f, sd * 26, tipY);                  // длинное «предплечье» до кончика крыла
+      ctx.quadraticCurveTo(sd * 22, tipY * 0.5 + 6, sd * 19, tipY * 0.45 + 11);   // три «зубца» перепонки
+      ctx.quadraticCurveTo(sd * 15.5, tipY * 0.35 + 8, sd * 12.5, tipY * 0.25 + 13);
+      ctx.quadraticCurveTo(sd * 9, tipY * 0.2 + 9, sd * 5.5, 9);
+      ctx.quadraticCurveTo(sd * 3.5, 7, sd * 2, 5);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.ellipse(0, 1, 2.9, 5.4, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -5.2, 2.6, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-2.3, -6.4); ctx.lineTo(-3.6, -11); ctx.lineTo(-0.6, -7.6); ctx.closePath();
+    ctx.moveTo(2.3, -6.4); ctx.lineTo(3.6, -11); ctx.lineTo(0.6, -7.6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
   // ── Кадр ──
   var last = 0, running = false, raf = 0, T0 = performance.now();
   function frame(now) {
@@ -3850,6 +4043,13 @@
     var dt = Math.min((now - last) / 1000, 0.1); last = now;
     var t = (now - T0) / 1000, wd = wind(t), i, p, x, y, img, a, sc, ph, cs;
     ctx.clearRect(0, 0, W, H);
+    if (id === 'halloween') {   // дымка: широкие мягкие пятна медленно плывут у земли
+      for (i = 0; i < fogs.length; i++) {
+        var fg = fogs[i], fw = fg.s * W / 0.7, fx = (fg.cx + Math.sin(t * fg.sp + fg.ph) * 0.12) * W + wd * 12;
+        ctx.globalAlpha = fg.a * (0.8 + 0.2 * Math.sin(t * 0.21 + fg.ph));
+        ctx.drawImage(fogSprite, fx - fw / 2, fg.cy * H - fw * 0.2, fw, fw * 0.4);
+      }
+    }
     for (i = 0; i < parts.length; i++) {
       p = parts[i];
       if (id === 'newyear') {
@@ -3857,7 +4057,7 @@
         p.y += p.vy * dt;
         x = p.bx + Math.sin(t * p.f + p.ph) * p.sway + Math.sin(t * 3.1 + p.ph2) * 1.4;   // плавное качание и лёгкая дрожь
         y = p.y; p.rot += p.spin * dt; a = p.a;
-        if (y > H + p.d) { parts[i] = spawn(false, p.z); continue; }
+        if (y > H + p.d) { parts[i] = spawn(false, p.z, p.kind); continue; }
         ctx.globalAlpha = a;
         if (p.crystal) { ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot); ctx.drawImage(pick(p.set, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore(); }
         else ctx.drawImage(pick(p.set, p.z), x - p.d / 2, y - p.d / 2, p.d, p.d);
@@ -3865,24 +4065,73 @@
         p.bx += wd * (0.3 + p.z) * 16 * SZ * dt;
         p.y += p.vy * dt;
         x = p.bx + Math.sin(t * p.f + p.ph) * p.sway; y = p.y;
-        if (y < -p.d) { parts[i] = spawn(false, p.z); continue; }
+        if (y < -p.d) { parts[i] = spawn(false, p.z, p.kind); continue; }
         a = p.a * clamp(y / (H * 0.14), 0, 1);                                              // у верхнего края плавно растворяются
         ctx.globalAlpha = a; ctx.save(); ctx.translate(x, y);
         ctx.rotate(Math.sin(t * 0.8 + p.ph) * 0.32 + wd * 0.05);                             // покачиваются
         ctx.scale(0.84 + 0.16 * Math.cos(t * 0.65 + p.ph2), 1);                               // и медленно поворачиваются боком
+        ctx.drawImage(pick(p.set, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore();
+      } else if (id === 'halloween') {
+        p.bx += wd * (0.3 + p.z) * 16 * SZ * dt;
+        if (p.kind === 'pumpkin') {
+          p.y += p.vy * dt; x = p.bx + Math.sin(t * p.f + p.ph) * p.sway; y = p.y;
+          if (y < -p.d) { parts[i] = spawn(false, p.z, p.kind); continue; }
+          a = p.a * clamp(y / (H * 0.14), 0, 1);
+          if (p.face && p.z < 0.88) {                                 // свет свечи мерцает вокруг тыквы
+            cs = 0.78 + 0.22 * Math.sin(t * p.fl + p.ph2) + 0.07 * Math.sin(t * 8.3 + p.ph);
+            ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a * 0.4 * cs;
+            ctx.drawImage(haloSprite, x - p.d * 0.95, y - p.d * 0.95, p.d * 1.9, p.d * 1.9);
+            ctx.globalCompositeOperation = 'source-over';
+          }
+          ctx.globalAlpha = a; ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 0.55 + p.ph2) * 0.2 + wd * 0.04);
+          ctx.drawImage(pick(p.set, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore();
+        } else if (p.kind === 'ember') {
+          p.y += p.vy * dt; x = p.bx + Math.sin(t * p.f + p.ph) * p.sway; y = p.y;
+          if (y < -p.d) { parts[i] = spawn(false, p.z, p.kind); continue; }
+          a = p.a * (0.55 + 0.45 * Math.sin(t * p.fl + p.ph2)) * clamp(y / (H * 0.12), 0, 1);   // мерцают и гаснут у верхнего края
+          ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a;
+          ctx.drawImage(pick(p.set, p.z), x - p.d / 2, y - p.d / 2, p.d, p.d);
+          ctx.globalCompositeOperation = 'source-over';
+        } else {
+          ph = t * p.w + p.ph;
+          p.y += p.vy * (1.12 - 0.62 * Math.abs(Math.cos(ph))) * dt;
+          x = p.bx + Math.sin(ph) * p.sway; y = p.y;
+          if (y > H + p.d) { parts[i] = spawn(false, p.z, p.kind); continue; }
+          cs = Math.cos(ph * 0.8 + p.ph2); sc = Math.abs(cs) < 0.07 ? 0.07 : cs;
+          img = (sc >= 0 ? p.set.front : p.set.back);
+          ctx.globalAlpha = p.a * (0.82 + 0.18 * Math.abs(cs)); ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot + Math.sin(ph) * 0.75);
+          ctx.scale(1, Math.abs(sc)); ctx.drawImage(pick(img, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore();
+        }
+      } else if (p.kind === 'rose') {
+        ph = t * p.w + p.ph;
+        p.bx += wd * (0.5 + p.z) * 22 * SZ * dt; p.y += p.vy * dt; p.rot += p.spin * dt;
+        x = p.bx + Math.sin(ph) * p.sway; y = p.y;
+        if (y > H + p.d) { parts[i] = spawn(false, p.z, p.kind); continue; }
+        ctx.globalAlpha = p.a; ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot + Math.sin(ph) * 0.25);
+        ctx.scale(1, 0.8 + 0.2 * Math.cos(ph * 0.9 + p.ph2));        // лёгкий наклон цветка, как будто он кружится в воздухе
         ctx.drawImage(pick(p.set, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore();
       } else {
         ph = t * p.w + p.ph;
         p.bx += wd * (0.5 + p.z) * 26 * SZ * dt;
         p.y += p.vy * (1.12 - 0.62 * Math.abs(Math.cos(ph))) * dt;                         // боком падает быстрее, плашмя парит
         x = p.bx + Math.sin(ph) * p.sway; y = p.y;
-        if (y > H + p.d) { parts[i] = spawn(false, p.z); continue; }
+        if (y > H + p.d) { parts[i] = spawn(false, p.z, p.kind); continue; }
         cs = Math.cos(ph * 0.8 + p.ph2);                                                     // переворот: видим то лицо, то изнанку
         sc = Math.abs(cs) < 0.07 ? 0.07 : cs;
         a = p.a * (0.82 + 0.18 * Math.abs(cs));
         img = (sc >= 0 ? p.set.front : p.set.back);
         ctx.globalAlpha = a; ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot + Math.sin(ph) * 0.75);
         ctx.scale(1, Math.abs(sc)); ctx.drawImage(pick(img, p.z), -p.d / 2, -p.d / 2, p.d, p.d); ctx.restore();
+      }
+    }
+    if (id === 'halloween') {
+      ctx.globalAlpha = 0.95;
+      for (i = 0; i < bats.length; i++) {
+        var b = bats[i];
+        if (!b.on) { b.t -= dt; if (b.t <= 0) startBat(b); continue; }
+        b.x += b.dir * b.v * dt; b.ph += dt * b.fr;
+        if ((b.dir > 0 && b.x > W + 60) || (b.dir < 0 && b.x < -60)) { b.on = false; b.t = rnd(4, 10); continue; }
+        drawBat(b.x, b.y + Math.sin(t * b.wf + b.ph2) * b.wa, b.s, b.dir, Math.sin(b.ph));
       }
     }
     ctx.globalAlpha = 1;
@@ -3892,7 +4141,11 @@
   var onResize = function () { resize(); };
   var onVis = function () { document.hidden ? stop() : start(); };
   document.body.appendChild(cv); resize();
-  for (var i = 0; i < count(); i++) parts.push(spawn(true));
+  function kindAt(n) {   // ровная пропорция с первого кадра, чтобы не было «ни одной тыквы» или «одни розы»
+    return id === 'halloween' ? (n % 10 === 3 ? 'pumpkin' : n % 5 === 1 ? 'leaf' : 'ember') : id === 'march8' ? (n % 10 === 0 || n % 10 === 3 || n % 10 === 6 ? 'rose' : 'petal') : undefined;
+  }
+  for (var i = 0; i < count(); i++) parts.push(spawn(true, undefined, kindAt(i)));
+  if (id === 'halloween') initHalloween();
   parts.sort(function (a, b) { return a.z - b.z; });   // дальние рисуются первыми, ближние поверх
   window.addEventListener('resize', onResize);
   document.addEventListener('visibilitychange', onVis);
