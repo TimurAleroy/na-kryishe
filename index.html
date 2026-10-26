@@ -3493,6 +3493,181 @@
   // восьмёрок и завышало статистику. Теперь оценку нужно выбрать в каждом пункте.
   // Оформление отзыва задают в приложении сотрудников (Сервис → Опросы): фон, ретушь, затемнение, тексты.
   // Нет ответа от сервера — остаётся стандартное оформление.
+  // ─── ВИДЕО В ФОНЕ ОПРОСА ───
+  // Одинаковый код в приложении сотрудников и в гостевом приложении.
+  // Главная причина тормозов — CSS-фильтр blur() на играющем видео: телефон пересчитывает размытие каждого кадра на весь экран.
+  // Поэтому «ретушь» для видео делаем иначе: сам ролик играет крошечным невидимым квадратиком, а кадр рисуется в совсем маленький холст
+  // и ступенями ×2 растягивается (каждая ступень сглаживает). Так же размыт фон на телевизоре. Нагрузка — копейки.
+  // Без ретуши видео показывается как есть, без всяких фильтров.
+  var VBG = (function () {
+    var K = 1.3;          // сила размытия: чем больше, тем меньше холст и тем мягче картинка (подобрано сравнением с blur(8px): ошибка минимальна при 1.3)
+    var BLUR = 8;         // px — как у фото с ретушью
+    var POS_Y = 0.3;      // как background-position: center 30%
+    var CSS_ID = 'vbg-css';
+
+    function css() {
+      if (document.getElementById(CSS_ID)) return;
+      var st = document.createElement('style');
+      st.id = CSS_ID;
+      st.textContent =
+        '.vbg-v{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:center 30%;opacity:0;transition:opacity .4s ease;pointer-events:none;display:block;border:0}' +
+        '.vbg-v.ready{opacity:1}' +
+        '.vbg-cv>.vbg-v{width:4px;height:4px;opacity:.01;transition:none}' +
+        '.vbg-cv>.vbg-v.ready{opacity:.01}' +
+        '.vbg-c{position:absolute;left:0;top:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .4s ease;pointer-events:none}' +
+        '.vbg-c.ready{opacity:1}' +
+        '.vbg-fb>.vbg-v{width:100%;height:100%;opacity:1}' +
+        '.vbg-fb.vbg-blur>.vbg-v{filter:blur(' + BLUR + 'px)}';
+      (document.head || document.documentElement).appendChild(st);
+    }
+    function smooth(x) { x.imageSmoothingEnabled = true; try { x.imageSmoothingQuality = 'high'; } catch (e) {} }
+
+    function stop(host) {
+      var s = host && host._vbg;
+      if (!s) return;
+      s.dead = true;
+      cancelAnimationFrame(s.raf);
+      clearInterval(s.guard); clearTimeout(s.wd);
+      document.removeEventListener('visibilitychange', s.onVis);
+      ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(function (e) { document.removeEventListener(e, s.unlock, true); });
+      try { s.v.pause(); s.v.removeAttribute('src'); s.v.load(); } catch (e) {}
+      if (s.v.parentNode) s.v.parentNode.removeChild(s.v);
+      if (s.cv && s.cv.parentNode) s.cv.parentNode.removeChild(s.cv);
+      host._vbg = null;
+      host.classList.remove('vbg-cv', 'vbg-fb', 'vbg-blur');
+    }
+
+    // Холст нужного размера: сначала маленький, потом ступени ×2 до ~280 точек в ширину, последний растягивается браузером на весь фон
+    function size(s) {
+      var h = s.host, vw = h.clientWidth || 360, vh = h.clientHeight || 640;
+      var w = Math.max(16, Math.min(640, Math.round(vw / (1 + BLUR * K))));
+      var key = w + 'x' + vw + 'x' + vh;
+      if (key === s.key && s.cs.length) return;
+      s.key = key;
+      var ws = [w], hs = [Math.max(12, Math.round(w * vh / vw))];
+      while (ws[ws.length - 1] < 280) { ws.push(Math.min(960, ws[ws.length - 1] * 2)); hs.push(Math.max(12, Math.round(ws[ws.length - 1] * vh / vw))); }
+      if (ws.length === 1) { ws.push(w); hs.push(hs[0]); }
+      s.cs = []; s.xs = [];
+      for (var i = 0; i < ws.length; i++) {
+        var last = i === ws.length - 1;
+        var c = last ? s.cv : document.createElement('canvas');
+        c.width = ws[i]; c.height = hs[i];
+        s.cs.push(c); s.xs.push(c.getContext('2d', last ? { alpha: false } : undefined));
+      }
+      // первая ступень (сжатие кадра видео в крошечный холст) — с хорошим сглаживанием, иначе мелькает рябь;
+      // остальные только растягивают в 2 раза, им хватает быстрого (так ~в 3 раза дешевле на каждый кадр)
+      for (i = 0; i < s.xs.length; i++) { smooth(s.xs[i]); if (i > 0) { try { s.xs[i].imageSmoothingQuality = 'low'; } catch (e) {} } }
+      s.xs[s.xs.length - 1].fillStyle = '#140a02'; s.xs[s.xs.length - 1].fillRect(0, 0, s.cv.width, s.cv.height);
+      s.lastT = -1;
+    }
+
+    function tick(now) {
+      var s = this;
+      if (s.dead || !s.cvMode) return;
+      s.raf = requestAnimationFrame(s.tick);
+      if (now - s.lastDraw < 30) return;                      // не чаще ~33 раз в секунду
+      s.lastDraw = now;
+      if (++s.n % 45 === 0) size(s);                          // размер окна мог поменяться
+      var v = s.v;
+      if (document.hidden || !s.host.clientWidth || v.readyState < 2 || !v.videoWidth) return;
+      var t = v.currentTime; if (t === s.lastT) return; s.lastT = t;   // кадр не сменился — не перерисовываем
+      var vw = v.videoWidth, vh = v.videoHeight, ta = (s.host.clientWidth || 360) / (s.host.clientHeight || 640), cw = vw, ch = vh, cx = 0, cy = 0;
+      if (vw / vh > ta) { cw = vh * ta; cx = (vw - cw) / 2; } else { ch = vw / ta; cy = (vh - ch) * POS_Y; }   // как object-fit: cover
+      try {
+        s.xs[0].drawImage(v, cx, cy, cw, ch, 0, 0, s.cs[0].width, s.cs[0].height);
+        for (var i = 1; i < s.cs.length; i++) s.xs[i].drawImage(s.cs[i - 1], 0, 0, s.cs[i - 1].width, s.cs[i - 1].height, 0, 0, s.cs[i].width, s.cs[i].height);
+        s.draws++;
+        if (!s.cv.classList.contains('ready')) { s.cv.classList.add('ready'); ready(s); }
+      } catch (e) {}
+    }
+
+    function ready(s) {
+      if (s.isReady) return;
+      s.isReady = true;
+      if (s.cb && s.cb.onReady) { try { s.cb.onReady(); } catch (e) {} }
+    }
+
+    // Режим показа: с ретушью — холст, без ретуши — само видео; если холст не завёлся — видео с фильтром (хуже, но видно)
+    function layout(s) {
+      var h = s.host;
+      s.cvMode = s.retouch && !s.fallback && s.canvasOk;
+      h.classList.toggle('vbg-cv', s.cvMode);
+      h.classList.toggle('vbg-fb', !!s.fallback);
+      h.classList.toggle('vbg-blur', !!s.retouch);
+      if (s.cvMode) {
+        if (!s.cv.parentNode) h.appendChild(s.cv);
+        size(s);
+        s.lastT = -1;
+        cancelAnimationFrame(s.raf);
+        s.raf = requestAnimationFrame(s.tick);
+        // если за 3 секунды кадры так и не нарисовались — показываем само видео
+        clearTimeout(s.wd);
+        if (!s.draws) s.wd = setTimeout(function () { if (!s.dead && s.cvMode && !s.draws && s.v.currentTime > 0) { s.fallback = true; layout(s); } }, 3000);
+      } else {
+        cancelAnimationFrame(s.raf);
+        clearTimeout(s.wd);
+        if (s.cv && s.cv.parentNode) s.cv.parentNode.removeChild(s.cv);
+        s.cv && s.cv.classList.remove('ready');
+        if (s.v.classList.contains('ready')) ready(s);
+      }
+    }
+
+    function play(s) {
+      var p; try { p = s.v.play(); } catch (e) {}
+      if (p && p.catch) p.catch(function () {
+        // телефон не дал запустить само (экономия заряда, нет касания): запустим при первом касании экрана
+        if (s.dead || s.armed) return;
+        s.armed = true;
+        s.unlock = function () { if (!s.dead) { try { s.v.play(); } catch (e) {} } };
+        ['touchstart', 'pointerdown', 'click', 'keydown'].forEach(function (e) { document.addEventListener(e, s.unlock, true); });
+      });
+    }
+
+    // host — элемент фона (position: absolute/fixed/relative); url — ссылка на видео; retouch — размыть; cb: { onReady, onFail }
+    function show(host, url, retouch, cb) {
+      if (!host || !url) return null;
+      var s = host._vbg;
+      if (s && s.url === url) { s.retouch = !!retouch; s.cb = cb || s.cb; layout(s); return s; }
+      stop(host);
+      css();
+      var v = document.createElement('video');
+      v.className = 'vbg-v';
+      v.muted = true; v.defaultMuted = true; v.loop = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto';
+      ['muted', 'playsinline', 'webkit-playsinline', 'aria-hidden'].forEach(function (a) { v.setAttribute(a, a === 'aria-hidden' ? 'true' : ''); });
+      v.disablePictureInPicture = true;
+      try { v.controls = false; v.setAttribute('disableremoteplayback', ''); } catch (e) {}
+      var cv = document.createElement('canvas'); cv.className = 'vbg-c'; cv.setAttribute('aria-hidden', 'true');
+      var ok = false;
+      try { ok = !!(cv.getContext && cv.getContext('2d', { alpha: false })); } catch (e) { ok = false; }
+      s = host._vbg = { host: host, v: v, cv: cv, url: url, retouch: !!retouch, cb: cb || {}, canvasOk: ok, cs: [], xs: [], key: '', raf: 0, n: 0, draws: 0,
+        lastT: -1, lastDraw: 0, dead: false, fallback: false, isReady: false, cvMode: false, wd: 0, armed: false, unlock: null, guard: 0, parked: false };
+      s.tick = tick.bind(s);
+      s.onVis = function () { if (!document.hidden && !s.dead && s.v.paused) play(s); };
+      document.addEventListener('visibilitychange', s.onVis);
+      // экран с фоном закрыли (display: none) или вкладка ушла в фон — ролик на паузу, чтобы не тратить заряд; вернулись — играем дальше
+      s.guard = setInterval(function () {
+        if (s.dead) return;
+        var vis = s.host.clientWidth > 0 && !document.hidden;
+        if (!vis && !s.v.paused) { s.v.pause(); s.parked = true; }
+        else if (vis && s.parked) { s.parked = false; play(s); }
+      }, 1000);
+      v.addEventListener('playing', function () { v.classList.add('ready'); if (!s.cvMode) ready(s); });
+      v.addEventListener('error', function () {
+        if (s.dead) return;
+        var f = s.cb && s.cb.onFail;
+        stop(host);
+        if (f) { try { f(); } catch (e) {} }
+      });
+      host.appendChild(v);
+      layout(s);
+      v.src = url;
+      play(s);
+      return s;
+    }
+
+    return { show: show, stop: stop };
+  })();
+
   let reviewConfig = {};
   async function loadReviewConfig() {
     try {
@@ -3507,9 +3682,19 @@
   function applyReviewConfig() {
     const c = reviewConfig || {};
     const bg = document.querySelector('.review-bg');
+    const isVideo = !!c.background && c.backgroundType === 'video';
+    const done = () => document.body.classList.remove('rv-pending');
     if (bg) {
-      if (c.background) bg.style.backgroundImage = `url("${c.background}")`;
-      bg.classList.toggle('retouch', c.retouch !== false);
+      if (isVideo) {
+        // Видео: размытие («ретушь») делает маленький холст, а не CSS-фильтр на играющем видео — иначе телефон тормозит.
+        // Стандартный фон лежит под видео и виден, только если ролик не запустился (тогда он размыт обычным способом).
+        bg.classList.remove('retouch');
+        VBG.show(bg, c.background, c.retouch !== false, { onReady: done, onFail: () => { bg.classList.toggle('retouch', c.retouch !== false); done(); } });
+      } else {
+        VBG.stop(bg);
+        if (c.background) bg.style.backgroundImage = `url("${c.background}")`;
+        bg.classList.toggle('retouch', c.retouch !== false);
+      }
     }
     const dim = Number.isFinite(Number(c.dim)) ? Number(c.dim) : 70;
     const a = k => Math.min(1, dim / 100 * k).toFixed(2);
@@ -3517,9 +3702,9 @@
     if (scrim) scrim.style.background = `linear-gradient(180deg, rgba(20,10,2,${a(1.1)}) 0%, rgba(20,10,2,${a(0.83)}) 35%, rgba(20,10,2,${a(0.94)}) 70%, rgba(20,10,2,${a(1.28)}) 100%), linear-gradient(90deg, rgba(20,10,2,0.3) 0%, transparent 30%, transparent 70%, rgba(20,10,2,0.3) 100%)`;
     if (c.heading) document.getElementById('rvHeading').textContent = c.heading;
     if (c.intro) document.getElementById('rvIntro').textContent = c.intro;
-    // фон ждём, пока загрузится, иначе на секунду мелькнёт стандартный
-    const done = () => document.body.classList.remove('rv-pending');
-    if (c.background) { const i = new Image(); i.onload = i.onerror = done; i.src = c.background; setTimeout(done, 1500); } else done();
+    // фон ждём, пока загрузится, иначе на секунду мелькнёт стандартный (видео — до 2 секунд, потом показываем как есть)
+    if (isVideo) setTimeout(done, 2000);
+    else if (c.background) { const i = new Image(); i.onload = i.onerror = done; i.src = c.background; setTimeout(done, 1500); } else done();
   }
   const reviewValues = {};
   function renderReviewSliders() {
