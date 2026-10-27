@@ -155,6 +155,8 @@
       color: var(--text-sub);
       letter-spacing: 0.5px;
     }
+    .status-badge { transition: opacity .25s ease; }
+    .status-badge.loading { opacity: 0; }
     .status-badge.closed { border-color: var(--border); box-shadow: none; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; flex-shrink: 0; animation: pulseDot 1.8s ease-in-out infinite; }
     .status-dot.closed { background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: none; }
@@ -980,7 +982,7 @@
       <span style="font-size: 11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);white-space:nowrap;">Мои брони</span>
     </div>
   </div>
-  <div class="status-badge">
+  <div class="status-badge loading">
     <div class="status-dot" id="statusDot"></div>
     <span id="statusText">Сейчас открыто</span>
     <span style="width:1px;height:14px;background:var(--border);margin:0 10px;flex-shrink:0;"></span>
@@ -1369,7 +1371,7 @@
   <div class="sec" style="margin-top:14px">Часто задаваемые вопросы</div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">Когда вы работаете?<span class="faq-ch">›</span></div>
-    <div class="faq-a">Ежедневно с 13:00 до 01:00. Ждём вас в гости в любой день недели.</div>
+    <div class="faq-a" id="faqHours">Ежедневно с 13:00 до 01:00. Ждём вас в гости в любой день недели.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">Как забронировать стол?<span class="faq-ch">›</span></div>
@@ -1826,17 +1828,57 @@
     const inline = /^[А-ЯЁ][а-яё]/.test(reason) ? reason.charAt(0).toLowerCase() + reason.slice(1) : reason; // «ДР Тимура» не трогаем
     return `${formatDateLocal(day)} мы не принимаем гостей: ${inline}. Выберите, пожалуйста, другую дату.`;
   }
+  // Режим работы показывается только когда пришёл с сервера (или взят последний известный, если сервер не отвечает):
+  // зашитые в код часы 13:00–01:00 гость больше не видит даже на секунду.
+  const VENUE_LS = 'venue_cfg_v1';
+  let venueReady = false, venueAt = 0;
+  function venueReveal() {
+    venueReady = true;
+    const b = document.querySelector('.status-badge');
+    if (b) b.classList.remove('loading');
+    checkStatus();
+  }
+  function venueFromCache() {
+    if (venueCfg) return;
+    try { const c = JSON.parse(localStorage.getItem(VENUE_LS) || 'null'); if (c && c.hours) venueCfg = c; } catch {}
+  }
   async function loadVenue() {
     try {
       const res = await apiFetch('/api/venue');
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('venue ' + res.status);
       const d = await res.json();
-      if (d && d.hours) { venueCfg = d; checkStatus(); }
-    } catch {}
+      if (!(d && d.hours)) throw new Error('venue empty');
+      venueCfg = d; venueAt = Date.now();
+      try { localStorage.setItem(VENUE_LS, JSON.stringify(d)); } catch {}
+    } catch { venueFromCache(); }
+    venueReveal();
+  }
+  // Приложение остаётся открытым часами: режим работы и «Сейчас открыто» обновляются сами
+  setTimeout(() => { if (!venueReady) { venueFromCache(); venueReveal(); } }, 4000);   // сервер долго молчит — берём последний известный режим
+  setInterval(() => { if (document.hidden) return; checkStatus(); if (Date.now() - venueAt > 50 * 1000) loadVenue(); }, 30 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - venueAt > 10 * 1000) loadVenue(); else if (!document.hidden) checkStatus(); });
+
+  // Часы одной строкой для «Вопросов»: «Ежедневно с 13:00 до 01:00» или по дням, если они разные
+  function venueHoursSentence() {
+    const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const hh = venueCfg && venueCfg.hours;
+    if (!hh) return '';
+    const days = [1, 2, 3, 4, 5, 6, 7].map(d => hh[String(d)] || VENUE_DEFAULT_HOURS);
+    const key = h => h.closed ? 'x' : h.open + '-' + h.close;
+    const txt = h => h.closed ? 'выходной' : `с ${h.open} до ${h.close}`;
+    if (days.every(h => key(h) === key(days[0]))) return days[0].closed ? 'Сейчас мы не работаем.' : `Ежедневно ${txt(days[0])}.`;
+    const parts = []; let i = 0;
+    while (i < 7) {
+      let j = i; while (j + 1 < 7 && key(days[j + 1]) === key(days[i])) j++;
+      parts.push((i === j ? names[i] : (j === i + 1 ? names[i] + ', ' + names[j] : names[i] + '–' + names[j])) + ' ' + (days[i].closed ? '— выходной' : txt(days[i])));
+      i = j + 1;
+    }
+    return parts.join('; ') + '.';
   }
 
   // Status
   function checkStatus() {
+    if (!venueReady) return;
     // По Москве; день заведения — до 06:00 утра ещё идёт вчерашний вечер
     const p = mskNowParts();
     const day = venueTodayStr();
@@ -1848,6 +1890,8 @@
     document.getElementById('statusText').textContent = open ? 'Сейчас открыто' : (reason && reason !== 'Выходной' ? 'Сегодня закрыто' : 'Сейчас закрыто');
     const hrs = document.getElementById('statusHours');
     if (hrs) hrs.textContent = reason ? reason : `${h.open} – ${h.close}`;
+    const faq = document.getElementById('faqHours');
+    if (faq && venueCfg) { const t = venueHoursSentence(); if (t) faq.textContent = t + ' Ждём вас в гости.'; }
   }
 
   // Navigation
@@ -3804,7 +3848,6 @@
     const mo = new MutationObserver(updateBackButton);
     BACK_OVERLAYS.forEach(([id]) => { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'] }); });
   }
-  checkStatus();
   loadVenue();
   loadEvents();
   if (new URLSearchParams(window.location.search).get('review') !== '1') loadStories(); // фото сторис подтягиваются в фоне, пока гость на главной
