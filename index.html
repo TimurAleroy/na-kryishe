@@ -1609,11 +1609,27 @@
   // а не по номеру телефона из запроса. Вне Telegram подписи нет — тогда
   // работает только бронь, а статус и история недоступны.
   function hasTelegramAuth() { return !!(tg && tg.initData); }
+
+  // Запрос с таймаутом. На слабой связи (смена Wi-Fi на LTE, подвал, перегруженная сеть) запрос мог висеть бесконечно: меню — «Загружаю…»
+  // навсегда, кнопка брони — «Отправляем…» навсегда. Теперь по истечении времени запрос обрывается, и срабатывает обычная ветка
+  // «Нет связи» (тексты и кнопки «Повторить» там уже есть). Время идёт до конца чтения ответа, а не только до его начала.
+  function fetchT(url, opts, ms) {
+    opts = opts || {};
+    if (typeof AbortController === 'undefined') return fetch(url, opts);
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), ms || 15000);
+    return fetch(url, Object.assign({}, opts, { signal: ctl.signal })).then(res => {
+      ['json', 'text', 'blob'].forEach(k => { const orig = res[k].bind(res); res[k] = () => orig().finally(() => clearTimeout(timer)); });
+      return res;
+    }, err => { clearTimeout(timer); throw err; });
+  }
+  // opts.timeout — своё время ожидания в мс (по умолчанию 15 секунд)
   function apiFetch(path, opts = {}) {
-    const headers = Object.assign({}, opts.headers || {});
-    if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    const { timeout, ...rest } = opts;
+    const headers = Object.assign({}, rest.headers || {});
+    if (rest.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
     if (hasTelegramAuth()) headers['X-Telegram-Init-Data'] = tg.initData;
-    return fetch(`${PROXY_BASE}${path}`, Object.assign({}, opts, { headers }));
+    return fetchT(`${PROXY_BASE}${path}`, Object.assign({}, rest, { headers }), timeout);
   }
 
   // ─── Время заведения: Москва, сутки до 06:00 ─────
@@ -1937,7 +1953,7 @@
   }
   async function loadVenue() {
     try {
-      const res = await apiFetch('/api/venue');
+      const res = await apiFetch('/api/venue', { timeout: 8000 });
       if (!res.ok) throw new Error('venue ' + res.status);
       const d = await res.json();
       if (!(d && d.hours)) throw new Error('venue empty');
@@ -2236,7 +2252,8 @@
       const checkingText = btn.innerHTML;
       btn.innerHTML = 'Проверяем...';
 
-      const me = await fetchMe();
+      // Проверка — удобство, а не условие: связь подвисла — не держим гостя, отправляем бронь как есть (сервер сам не даст создать дубль)
+      const me = await fetchMe(4000);
 
       btn.disabled = false;
       btn.style.opacity = '1';
@@ -2262,6 +2279,7 @@
     try {
       const res = await apiFetch('/api/booking', {
         method: 'POST',
+        timeout: 20000,
         body: JSON.stringify({ name, phone, dateISO: moment.calISO, time, guests, comment, room, eventName })
       });
       if (res.ok) result = await res.json().catch(() => ({}));
@@ -2398,6 +2416,7 @@
     renderMenu(items, document.getElementById('menuContent'), document.getElementById('menuTabs'));
   }
 
+  let menuFetching = null;   // идёт ли сейчас загрузка меню
   async function loadMenu() {
     const el = document.getElementById('menuContent');
     const tabsEl = document.getElementById('menuTabs');
@@ -2408,19 +2427,25 @@
       } catch {}
     }
     if (menuLoadedAt && Date.now() - menuLoadedAt < 5 * 60 * 1000) return;
-    try {
-      const res = await fetch(`${PROXY_BASE}/api/menu`);
-      if (!res.ok) throw new Error();
-      const items = await res.json();
-      menuLoadedAt = Date.now();
-      try { localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(items)); } catch {}
-      showMenuItems(items);
-    } catch {
-      if (!currentMenuItems.length) {
-        tabsEl.innerHTML = '';
-        el.innerHTML = '<div class="no-data">Меню временно недоступно</div>';
-      }
-    }
+    if (menuFetching) return menuFetching;       // запрос уже идёт — второй не нужен
+    if (!currentMenuItems.length) { tabsEl.innerHTML = ''; el.innerHTML = '<div class="no-data">Загружаю меню...</div>'; }
+    menuFetching = (async () => {
+      try {
+        const res = await fetchT(`${PROXY_BASE}/api/menu`, {}, 10000);
+        if (!res.ok) throw new Error();
+        const items = await res.json();
+        menuLoadedAt = Date.now();
+        try { localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(items)); } catch {}
+        showMenuItems(items);
+      } catch {
+        // меню уже было на экране (из памяти телефона) — оставляем его; иначе честно говорим и даём повторить
+        if (!currentMenuItems.length) {
+          tabsEl.innerHTML = '';
+          el.innerHTML = '<div class="no-data">Не удалось загрузить меню.<br>Проверьте интернет.<br><br><button class="verify-btn" style="max-width:200px" onclick="loadMenu()">Повторить</button></div>';
+        }
+      } finally { menuFetching = null; }
+    })();
+    return menuFetching;
   }
 
   // Категории в Notion называются как в CRM/на кухне ("Еда"), но в меню гостя
@@ -2556,7 +2581,7 @@
   }
   function fetchEventsFresh() {
     if (!eventsFetch) {
-      eventsFetch = fetch(EVENTS_URL)
+      eventsFetch = fetchT(EVENTS_URL, {}, 10000)
         .then(r => { if (!r.ok) throw new Error(); return r.json(); })
         .then(list => {
           if (!Array.isArray(list)) throw new Error();
@@ -2589,10 +2614,11 @@
     const list = document.getElementById('eventsList');
     const cached = eventsData.length ? eventsData : eventsFromCache();
     if (cached) showEventsList(cached);
+    else if (!list.querySelector('.ev-card')) list.innerHTML = '<div class="loading"><div class="spinner"></div>Загружаю...</div>';
     try {
       showEventsList(await fetchEventsFresh());
     } catch {
-      if (!cached) list.innerHTML = '<div class="no-data">Мероприятия временно недоступны</div>';
+      if (!cached) list.innerHTML = '<div class="no-data">Не удалось загрузить мероприятия.<br>Проверьте интернет.<br><br><button class="verify-btn" style="max-width:200px" onclick="loadEvents()">Повторить</button></div>';
     }
   }
   // При открытии приложения loadEvents() вызывается ниже (рядом с checkStatus) —
@@ -2932,7 +2958,7 @@
   async function loadStories(force) {
     if (!force && storiesData && Date.now() - storiesFetchedAt < 20000) return storiesData;
     try {
-      const res = await fetch(`${PROXY_BASE}/api/stories`);
+      const res = await fetchT(`${PROXY_BASE}/api/stories`, {}, 10000);
       if (res.ok) {
         const d = await res.json();
         if (d && Array.isArray(d.bar) && Array.isArray(d.vip)) {
@@ -3000,10 +3026,10 @@
   // ─── «Я» С СЕРВЕРА ────────────────────────────────
   // Карточка гостя, привязанная к его Telegram-аккаунту: имя, телефон, ДР,
   // история и активные брони. null — ошибка сети/сервера.
-  async function fetchMe() {
+  async function fetchMe(timeout) {
     if (!hasTelegramAuth()) return { bound: false, noAuth: true };
     try {
-      const res = await apiFetch('/api/me');
+      const res = await apiFetch('/api/me', { timeout });
       if (!res.ok) return null;
       return await res.json();
     } catch {
@@ -3945,6 +3971,12 @@
   venueFromCache(); if (venueCfg) venueReveal();
   loadVenue();
   loadEvents();
+  // Связь вернулась (вышли из лифта, переключились на другую сеть): обновляем режим работы и то, что гость сейчас смотрит
+  window.addEventListener('online', () => {
+    loadVenue();
+    if (currentScreen === 'menu') loadMenu();
+    if (currentScreen === 'events') loadEvents();
+  });
   if (new URLSearchParams(window.location.search).get('review') !== '1' && new URLSearchParams(window.location.search).get('tips') !== '1') loadStories(); // фото сторис подтягиваются в фоне, пока гость на главной
   initHeaderAvatar();
   updateBookingDot();
@@ -3989,7 +4021,7 @@
     // ── загрузка настроек: кто на смене, какие суммы ──
     function load() {
       if (!cfg) showState('Загружаем…');
-      fetch(`${PROXY_BASE}/api/tips/config`, { cache: 'no-store' })
+      fetchT(`${PROXY_BASE}/api/tips/config`, { cache: 'no-store' }, 10000)
         .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
         .then((c) => { loadedAt = Date.now(); apply(c); })
         .catch(() => { if (!cfg) showState('Не получилось загрузить. Проверьте связь и попробуйте ещё раз.', true); });
