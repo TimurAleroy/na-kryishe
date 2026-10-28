@@ -945,6 +945,62 @@
       z-index: 10;
       white-space: nowrap;
     }
+
+    /* ЧАЕВЫЕ (скрытый экран: вход по QR ?tips=1 или t.me/<бот>?start=tips). Все классы с префиксом tp- — с остальными стилями не пересекаются. */
+    #screen-tips {
+      --tp-faint: rgba(240,223,192,0.22); --tp-ok: #6CC795; --tp-on-ok: #0F2A1B; --tp-bad: #F08A78;
+      --tp-off-bg: rgba(240,223,192,0.07); --tp-key-hover: rgba(240,223,192,0.06); --tp-key-press: rgba(240,223,192,0.12); --tp-on-accent: #1E1004;
+    }
+    #screen-tips [hidden] { display: none !important; }
+    .tp-state { text-align: center; color: var(--text-sub); font-size: 14px; line-height: 1.5; padding: 28px 12px; }
+    .tp-state button { margin-top: 14px; height: 44px; padding: 0 22px; border-radius: 14px; border: 1px solid var(--border); background: transparent; color: var(--text); font: 500 14px/1 'Inter', sans-serif; cursor: pointer; }
+    .tp-demo { max-width: 360px; margin: 0 auto 12px; padding: 10px 14px; border-radius: 12px; background: var(--tp-off-bg); color: var(--text-sub); font-size: 12.5px; line-height: 1.45; text-align: center; }
+    .tp-pad { width: 100%; max-width: 360px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 28px; padding: 20px; display: flex; flex-direction: column; }
+    .tp-who { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .tp-who button {
+      display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 7px; border-radius: 14px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-sub); font: 500 12.5px/1.2 'Inter', sans-serif; cursor: pointer; min-width: 0; transition: border-color .15s, background-color .15s, color .15s;
+    }
+    .tp-who button > span:nth-child(2) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tp-who button small { font-weight: 400; font-size: 11.5px; color: var(--text-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tp-who button[aria-pressed="true"] { border-color: var(--accent); background: var(--tp-off-bg); color: var(--text); }
+    .tp-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 600 12px/1 'Inter', sans-serif; background: var(--tp-off-bg); color: var(--text-sub); letter-spacing: .02em; transition: background-color .15s, color .15s; }
+    .tp-who button[aria-pressed="true"] .tp-av { background: var(--accent); color: var(--tp-on-accent); }
+    .tp-frame { margin-top: 14px; height: 72px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .tp-shake { display: flex; }
+    .tp-amt { position: relative; display: flex; align-items: baseline; white-space: nowrap; font-weight: 600; font-size: 56px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--text);
+              transform-origin: center; transition: transform .28s cubic-bezier(.23,1,.32,1); }
+    .tp-g { display: inline-block; will-change: transform; }
+    .tp-g.tp-sep { width: .28em; }
+    .tp-g.tp-ghost { color: var(--tp-faint); }
+    .tp-cur { margin-left: .14em; color: var(--text-muted); font-weight: 500; transition: color .2s; }
+    .tp-amt.tp-empty .tp-cur { color: var(--tp-faint); }
+    .tp-hint { height: 22px; margin-top: 2px; text-align: center; font-size: 13px; color: var(--text-sub); position: relative; }
+    .tp-hint span { position: absolute; inset: 0; transition: opacity .18s, transform .18s cubic-bezier(.23,1,.32,1); }
+    .tp-hint .tp-bad { color: var(--tp-bad); opacity: 0; transform: translateY(6px); }
+    .tp-pad.tp-capped .tp-hint .tp-bad { opacity: 1; transform: none; }
+    .tp-pad.tp-capped .tp-hint .tp-info { opacity: 0; transform: translateY(-6px); }
+    .tp-chips { margin-top: 8px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .tp-chips button { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); font: 600 13px/1 'Inter', sans-serif; cursor: pointer; font-variant-numeric: tabular-nums; transition: border-color .15s, background-color .15s, color .15s; }
+    .tp-chips button:hover { background: var(--tp-key-hover); }
+    .tp-chips button[aria-pressed="true"] { border-color: var(--accent); background: var(--tp-off-bg); }
+    .tp-keys { margin-top: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .tp-keys button { height: 50px; border: 0; border-radius: 16px; background: transparent; color: var(--text); font: 500 24px/1 'Inter', sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; display: grid; place-items: center; touch-action: manipulation; transition: background-color .1s; }
+    .tp-keys button:hover { background: var(--tp-key-hover); }
+    .tp-keys button:active, .tp-keys button.tp-press { background: var(--tp-key-press); transition: none; }
+    .tp-keys svg { width: 26px; height: 26px; stroke: var(--text-muted); fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .tp-send { margin-top: 10px; position: sticky; bottom: 14px; z-index: 2; box-shadow: 0 0 0 8px var(--bg-card); height: 52px; border: 0; border-radius: 16px; overflow: hidden; font: 600 15px/1 'Inter', sans-serif; cursor: pointer; background: var(--accent); color: var(--tp-on-accent); transition: background-color .2s, color .2s; }
+    .tp-send.tp-off { background: var(--tp-off-bg); color: var(--text-muted); }
+    .tp-send.tp-done { background: var(--tp-ok); color: var(--tp-on-ok); }
+    .tp-send .tp-lbl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .2s, transform .22s cubic-bezier(.23,1,.32,1); }
+    .tp-send .tp-lbl.tp-b { opacity: 0; transform: translateY(12px); }
+    .tp-send.tp-done .tp-lbl.tp-a { opacity: 0; transform: translateY(-12px); }
+    .tp-send.tp-done .tp-lbl.tp-b { opacity: 1; transform: none; }
+    .tp-send svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .tp-err { min-height: 20px; margin-top: 10px; text-align: center; font-size: 13px; line-height: 1.4; color: var(--tp-bad); }
+    .tp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    @media (prefers-reduced-motion: reduce) { .tp-amt, .tp-hint span, .tp-send, .tp-send .tp-lbl, .tp-who button, .tp-av { transition: none; } }
+
   </style>
 </head>
 <body>
@@ -1458,6 +1514,37 @@
   <div style="height:16px"></div>
 </div>
 
+<!-- ЧАЕВЫЕ (скрытый экран — вход по QR: ?tips=1 или t.me/<бот>?start=tips). Включает и настраивает администрация в приложении сотрудников -->
+<div class="screen" id="screen-tips">
+  <div style="margin-top:14px"></div>
+  <div class="about-hero" style="padding:14px 20px;margin-bottom:12px;">
+    <h2 style="font-size:20px;letter-spacing:2px;">Чаевые</h2>
+    <p id="tpLead">Тому, кто сегодня о вас заботился</p>
+  </div>
+
+  <div class="tp-state" id="tpState" role="status">Загружаем…</div>
+
+  <div id="tpMain" hidden>
+    <div class="tp-demo" id="tpDemo" hidden>Тестовый режим: оплата ещё не подключена, деньги не списываются.</div>
+    <section class="tp-pad" id="tpPad" aria-label="Чаевые">
+      <div class="tp-who" id="tpWho" role="group" aria-label="Кому"></div>
+      <div class="tp-frame" id="tpFrame">
+        <output class="tp-sr" id="tpSr" aria-live="polite"></output>
+        <div class="tp-shake" id="tpShake"><div class="tp-amt tp-empty" id="tpAmt" aria-hidden="true"></div></div>
+      </div>
+      <div class="tp-hint"><span class="tp-info" id="tpInfo"></span><span class="tp-bad" id="tpBad"></span></div>
+      <div class="tp-chips" id="tpChips"></div>
+      <div class="tp-keys" id="tpKeys"></div>
+      <button type="button" class="tp-send tp-off" id="tpSend">
+        <span class="tp-lbl tp-a" id="tpSendA"></span>
+        <span class="tp-lbl tp-b"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span id="tpSendB"></span></span>
+      </button>
+      <div class="tp-err" id="tpErr" role="alert"></div>
+    </section>
+  </div>
+  <div style="height:16px"></div>
+</div>
+
 <!-- BOOKING OVERLAY -->
 <div class="booking-overlay" id="bookingOverlay" onclick="if(event.target===this) closeBookingOverlay()">
   <div class="booking-overlay-card">
@@ -1895,7 +1982,7 @@
   }
 
   // Navigation
-  const screens = ['home','book','events','event','about','faq','menu','bar','vip','profile','location','review','message'];
+  const screens = ['home','book','events','event','about','faq','menu','bar','vip','profile','location','review','message','tips'];
   // История переходов для кнопки «Назад» Telegram: [{ name, y }] — откуда пришли и где была прокрутка
   const navStack = [];
   let currentScreen = 'home';
@@ -3850,9 +3937,260 @@
   }
   loadVenue();
   loadEvents();
-  if (new URLSearchParams(window.location.search).get('review') !== '1') loadStories(); // фото сторис подтягиваются в фоне, пока гость на главной
+  if (new URLSearchParams(window.location.search).get('review') !== '1' && new URLSearchParams(window.location.search).get('tips') !== '1') loadStories(); // фото сторис подтягиваются в фоне, пока гость на главной
   initHeaderAvatar();
   updateBookingDot();
+
+  // ─── ЧАЕВЫЕ (скрытый экран: вход по QR ?tips=1 или t.me/<бот>?start=tips) ─────
+  // Гость выбирает, кому (сотрудники, которые сегодня на смене, — список отдаёт сервер — или вся команда), нажимает готовую сумму
+  // или набирает свою: цифры выезжают сверху, сумма сжимается по ширине. Включает и настраивает администрация (приложение сотрудников → Чаевые).
+  // Оплата пока не подключена: сервер отвечает demo: true, и экран честно пишет, что деньги не списываются.
+  (function () {
+    const $ = (id) => document.getElementById(id);
+    let reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    let cfg = null, who = null, items = [], digits = [], nextId = 1, glyphEls = {}, scale = 1;
+    let sendKey = '', sending = false, sent = null, sentTimer = 0, capTimer = 0, loadedAt = 0, built = false, errTimer = 0;
+    const rub = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+    const value = () => (digits.length ? parseInt(digits.map((d) => d.ch).join(''), 10) : 0);
+    const haptic = (kind) => {
+      try {
+        if (tg && tg.HapticFeedback) { if (kind === 'ok') tg.HapticFeedback.notificationOccurred('success'); else tg.HapticFeedback.selectionChanged(); }
+        else if (navigator.vibrate) navigator.vibrate(kind === 'ok' ? 12 : 4);
+      } catch (e) {}
+    };
+    const newKey = () => {
+      try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+      return 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+    };
+    const ini = (name) => {
+      const w = String(name || '').replace(/\./g, '').trim().split(/\s+/).filter(Boolean);
+      return (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || '?').slice(0, 2)).toUpperCase();
+    };
+
+    function showState(text, retry) {
+      $('tpMain').hidden = true;
+      const el = $('tpState'); el.hidden = false;
+      el.textContent = text;
+      if (retry) { const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Повторить'; b.onclick = load; el.appendChild(b); }
+    }
+    function showErr(text) {
+      const el = $('tpErr'); el.textContent = text || '';
+      clearTimeout(errTimer); if (text) errTimer = setTimeout(() => { el.textContent = ''; }, 6000);
+    }
+
+    // ── загрузка настроек: кто на смене, какие суммы ──
+    function load() {
+      if (!cfg) showState('Загружаем…');
+      fetch(`${PROXY_BASE}/api/tips/config`, { cache: 'no-store' })
+        .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+        .then((c) => { loadedAt = Date.now(); apply(c); })
+        .catch(() => { if (!cfg) showState('Не получилось загрузить. Проверьте связь и попробуйте ещё раз.', true); });
+    }
+    function apply(c) {
+      if (!c || !c.enabled) { cfg = null; showState('Сейчас чаевые не принимаются. Спасибо, что заглянули!'); return; }
+      cfg = c;
+      items = (c.mode === 'team' ? [] : c.staff.map((s) => ({ id: s.id, name: s.name, role: s.role })));
+      if (c.mode !== 'person') items.push({ id: null, name: 'Вся команда', role: 'все вместе' });
+      // выбранный ушёл со смены — выбор сбрасываем; если вариант один, он выбран сам
+      if (!who || !items.some((i) => i.id === who.id)) who = items.length === 1 ? items[0] : null;
+      $('tpState').hidden = true; $('tpMain').hidden = false;
+      $('tpDemo').hidden = !c.demo;
+      $('tpKeys').hidden = !c.allowCustom;
+      buildWho(); buildChips(); buildKeys();
+      if (value() > c.max) { digits = []; renderDigits(null); }
+      update();
+    }
+
+    // ── кому ──
+    function buildWho() {
+      const el = $('tpWho'); el.textContent = '';
+      items.forEach((p) => {
+        const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', who && p.id === who.id ? 'true' : 'false');
+        b.innerHTML = '<span class="tp-av">' + escHtml(ini(p.name)) + '</span><span>' + escHtml(p.name) + '</span><small>' + escHtml(String(p.role).toLowerCase()) + '</small>';
+        b.addEventListener('click', () => { who = p; sendKey = ''; clearSent(); showErr(''); haptic(); [].forEach.call(el.children, (c, i) => c.setAttribute('aria-pressed', items[i].id === p.id ? 'true' : 'false')); update(); });
+        el.appendChild(b);
+      });
+    }
+    // ── готовые суммы ──
+    function buildChips() {
+      const el = $('tpChips'); el.textContent = '';
+      cfg.amounts.forEach((a) => {
+        const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', 'false'); b.dataset.sum = a; b.textContent = rub(a);
+        b.addEventListener('click', () => { sendKey = ''; clearSent(); showErr(''); haptic(); setDigits(String(a)); });
+        el.appendChild(b);
+      });
+    }
+    // ── клавиши ──
+    const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'];
+    const keyBtns = {};
+    function buildKeys() {
+      if (built) return; built = true;
+      const el = $('tpKeys');
+      KEYS.forEach((k) => {
+        const b = document.createElement('button'); b.type = 'button';
+        if (k === 'back') { b.setAttribute('aria-label', 'Стереть'); b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>'; }
+        else b.textContent = k;
+        b.addEventListener('click', () => press(k));
+        el.appendChild(b); keyBtns[k] = b;
+      });
+      const amt = $('tpAmt'); const cur = document.createElement('span'); cur.className = 'tp-cur'; cur.id = 'tpCur'; cur.textContent = '₽'; amt.appendChild(cur);
+      renderDigits(null);
+    }
+
+    // ── набор суммы ──
+    function typeKey(key) {
+      if (key === 'back') { digits = digits.slice(0, -1); return true; }
+      const add = key === '00' ? ['0', '0'] : [key];
+      if (!digits.length && add[0] === '0') return false;
+      const next = digits.slice();
+      add.forEach((ch) => next.push({ id: nextId++, ch }));
+      if (next.length > String(cfg.max).length) { showCap(); return false; }
+      if (parseInt(next.map((d) => d.ch).join(''), 10) > cfg.max) { showCap(); return false; }
+      digits = next; return true;
+    }
+    function press(key) {
+      if (!cfg || !cfg.allowCustom) return;
+      sendKey = ''; clearSent(); showErr(''); haptic();
+      const before = snapshot();
+      if (!typeKey(key)) { refuse(); return; }
+      hideCap(); renderDigits(before); update();
+    }
+    function setDigits(str) {
+      const before = snapshot();
+      digits = String(Math.min(parseInt(str, 10), cfg.max)).split('').map((ch) => ({ id: nextId++, ch }));
+      hideCap(); renderDigits(before); update();
+    }
+    function refuse() {
+      if (reduce) return;
+      $('tpShake').animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-10px)' }, { transform: 'translateX(9px)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }], { duration: 360, easing: 'ease-out' });
+    }
+    function showCap() { $('tpPad').classList.add('tp-capped'); $('tpBad').textContent = 'Не больше ' + rub(cfg.max) + ' за раз'; clearTimeout(capTimer); capTimer = setTimeout(hideCap, 1800); }
+    function hideCap() { $('tpPad').classList.remove('tp-capped'); clearTimeout(capTimer); }
+
+    // ── цифры выезжают сверху, остальные сдвигаются на новое место ──
+    function snapshot() { const s = {}; for (const k in glyphEls) s[k] = glyphEls[k].getBoundingClientRect().left; return s; }
+    function layoutGlyphs() {
+      const list = [], n = digits.length;
+      for (let i = 0; i < n; i++) {
+        if (i > 0 && (n - i) % 3 === 0) list.push({ key: 's' + digits[i].id, ch: '', kind: 'sep' });
+        list.push({ key: 'd' + digits[i].id, ch: digits[i].ch, kind: 'digit' });
+      }
+      if (!n) list.push({ key: 'zero', ch: '0', kind: 'ghost' });
+      return list;
+    }
+    function fit() {
+      const amt = $('tpAmt'), frame = $('tpFrame');
+      const w = amt.scrollWidth, fw = frame.clientWidth - 8;
+      scale = Math.min(1, fw / Math.max(1, w));
+      amt.style.transform = 'scale(' + scale + ')';
+    }
+    function renderDigits(before) {
+      const amt = $('tpAmt'), cur = $('tpCur');
+      if (!cur) return;
+      const list = layoutGlyphs(), want = {};
+      list.forEach((g) => { want[g.key] = g; });
+      Object.keys(glyphEls).forEach((k) => {
+        if (want[k]) return;
+        const el = glyphEls[k]; delete glyphEls[k];
+        if (reduce) { el.remove(); return; }
+        const r = el.getBoundingClientRect(), pr = amt.getBoundingClientRect();
+        el.style.position = 'absolute'; el.style.left = (r.left - pr.left) / (scale || 1) + 'px'; el.style.top = '0';
+        const a = el.animate([{ opacity: 1, transform: 'translateY(0)', filter: 'blur(0px)' }, { opacity: 0, transform: 'translateY(18px)', filter: 'blur(2px)' }], { duration: 140, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' });
+        a.onfinish = () => el.remove();
+      });
+      const created = [];
+      list.forEach((g) => {
+        let el = glyphEls[g.key];
+        if (!el) { el = document.createElement('span'); el.className = 'tp-g tp-' + g.kind; el.textContent = g.ch; glyphEls[g.key] = el; created.push(g.key); }
+        amt.insertBefore(el, cur);
+      });
+      amt.classList.toggle('tp-empty', !digits.length);
+      fit();
+      if (!reduce) {
+        const sc = scale || 1;
+        Object.keys(glyphEls).forEach((k) => {
+          const el = glyphEls[k], r = el.getBoundingClientRect();
+          if (created.indexOf(k) >= 0) {
+            if (k !== 'zero' && !el.classList.contains('tp-sep')) el.animate([{ opacity: 0, transform: 'translateY(-22px)', filter: 'blur(2px)' }, { opacity: 1, transform: 'translateY(0)', filter: 'blur(0px)' }], { duration: 300, easing: 'cubic-bezier(.2,1.1,.3,1)' });
+            else el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: k === 'zero' ? 150 : 200 });
+          } else if (before && before[k] != null) {
+            const dx = (before[k] - r.left) / sc;
+            if (Math.abs(dx) > 0.5) el.animate([{ transform: 'translateX(' + dx + 'px)' }, { transform: 'translateX(0)' }], { duration: 280, easing: 'cubic-bezier(.2,.9,.3,1)' });
+          }
+        });
+      }
+    }
+
+    // ── подписи и кнопка ──
+    function status() {
+      const v = value();
+      if (!who) return { ok: false, text: 'Выберите, кому' };
+      if (!v) return { ok: false, text: 'Введите сумму' };
+      if (v < cfg.min) return { ok: false, text: 'Не меньше ' + rub(cfg.min) };
+      return { ok: true, text: 'Оставить ' + rub(v) + ' · ' + who.name };
+    }
+    function update() {
+      if (!cfg) return;
+      const v = value(), st = status(), btn = $('tpSend');
+      $('tpSr').textContent = rub(v);
+      $('tpInfo').textContent = sent !== null
+        ? (cfg.demo ? 'Тестовая отправка — деньги не списаны' : 'Передадим ' + (who && who.id ? who.name : 'команде'))
+        : (v ? (v < cfg.min ? 'Минимум ' + rub(cfg.min) : '') : (cfg.allowCustom ? 'Выберите сумму или наберите свою' : 'Выберите сумму'));
+      [].forEach.call($('tpChips').children, (b) => b.setAttribute('aria-pressed', String(+b.dataset.sum === v)));
+      btn.classList.toggle('tp-off', !st.ok && sent === null);
+      btn.classList.toggle('tp-done', sent !== null);
+      btn.setAttribute('aria-disabled', String(!st.ok || sending));
+      $('tpSendA').textContent = sending ? 'Отправляем…' : st.text;
+      if (sent !== null) $('tpSendB').textContent = 'Спасибо! ' + rub(sent);
+    }
+    function clearSent() { clearTimeout(sentTimer); if (sent !== null) { sent = null; update(); } }
+
+    // ── отправка ──
+    function fail(status, j) {
+      const code = (j && j.code) || '';
+      if (status === 401) return showErr('Откройте приложение в Telegram — так мы узнаем, что это вы.');
+      if (code === 'not_on_shift') { who = null; showErr((j && j.error) || 'Этот сотрудник уже не на смене — выберите другого.'); load(); return; }
+      if (code === 'tips_off') { load(); return; }
+      if (code === 'tips_limit' || status === 429) return showErr('Слишком много чаевых за час. Попробуйте позже.');
+      if (status === 400 && j && j.error) return showErr(j.error);
+      showErr('Не получилось отправить. Попробуйте ещё раз.');
+    }
+    $('tpSend').addEventListener('click', () => {
+      if (!cfg || sending || sent !== null) return;
+      const st = status();
+      if (!st.ok) { refuse(); showErr(st.text + '.'); return; }
+      showErr('');
+      sending = true; update();
+      if (!sendKey) sendKey = newKey();
+      const v = value();
+      apiFetch('/api/tips', { method: 'POST', body: JSON.stringify({ recipient: who.id ? 'employee' : 'team', employeeId: who.id || undefined, amount: v, key: sendKey }) })
+        .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })))
+        .then((res) => {
+          sending = false;
+          if (res.status === 200 && res.j && res.j.ok) {
+            sent = v; sendKey = ''; haptic('ok'); update();
+            sentTimer = setTimeout(() => { sent = null; const b = snapshot(); digits = []; renderDigits(b); update(); }, 2600);
+          } else { update(); fail(res.status, res.j); }
+        })
+        .catch(() => { sending = false; update(); showErr('Нет связи. Нажмите ещё раз.'); });
+    });
+
+    // ── клавиатура компьютера ──
+    document.addEventListener('keydown', (e) => {
+      if (currentScreen !== 'tips' || !cfg || !cfg.allowCustom || e.metaKey || e.ctrlKey || e.altKey) return;
+      let k = null;
+      if (/^\d$/.test(e.key)) k = e.key; else if (e.key === 'Backspace') k = 'back'; else return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || '')) return;
+      e.preventDefault(); press(k);
+      const b = keyBtns[k]; if (b) { b.classList.add('tp-press'); setTimeout(() => b.classList.remove('tp-press'), 110); }
+    });
+    // вернулись в приложение — список сотрудников мог поменяться (кто-то закрыл смену)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && currentScreen === 'tips' && Date.now() - loadedAt > 60000) load();
+    });
+
+    window.openTips = function () { showScreen('tips'); load(); };
+  })();
 
   // Скрытый вход в отзыв: ?review=1 в ссылке (только с QR-кода на столе, не из обычной навигации).
   // Если ссылку открывают через Telegram-механизм startapp (не обычный URL) — параметр
@@ -3873,6 +4211,19 @@
     if (nav) nav.style.display = 'none';
     const header = document.querySelector('.header');
     if (header) header.style.display = 'none';
+  } else {
+    // Скрытый вход в чаевые: ?tips=1 (QR на столе или у стойки: t.me/<бот>?start=tips) или start_param «tips».
+    // Как и отзыв: остаётся только сам экран, без шапки и нижней навигации.
+    const urlWantsTips = new URLSearchParams(window.location.search).get('tips') === '1';
+    const tgWantsTips = tgStartParam === 'tips' || tgStartParam === 'tips1';
+    if (urlWantsTips || tgWantsTips) {
+      reviewOnlyMode = true;
+      openTips();
+      const nav = document.querySelector('.bottom-nav');
+      if (nav) nav.style.display = 'none';
+      const header = document.querySelector('.header');
+      if (header) header.style.display = 'none';
+    }
   }
 </script>
 <!-- СЕЗОН: праздничная анимация поверх приложения (только у гостей). Какой эффект и когда — решает основатель в приложении
