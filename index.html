@@ -198,7 +198,11 @@
     /* На всех экранах, кроме главной, кружки и «Сейчас открыто» не показываем; шапка-карточка остаётся той же,
        только под ней появляется тонкая линия. */
     body.compact-header .header { display: none; }
-    body.compact-header .app-top { border-bottom: 1px solid var(--border); }
+    /* Линия под шапкой на всех экранах, кроме главной. Это отдельный элемент, а не рамка шапки, чтобы при свайпе «назад» на главную
+       её можно было обрезать по краю уезжающего экрана (линия принадлежит экрану, а не шапке). Высота шапки та же, что была с рамкой. */
+    body.compact-header .app-top { padding-bottom: 13px; }
+    .app-line { display: none; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--border); pointer-events: none; }
+    body.compact-header .app-line { display: block; }
 
     /* Итог брони */
     .booking-summary { text-align: left; margin: 16px 0 14px; border-top: 1px solid var(--border); }
@@ -1107,6 +1111,7 @@
     </div>
     <div onclick="openProfile()" id="headerAvatar" style="margin-left:auto;width:44px;height:44px;border-radius:50%;background:#ff9f43;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;overflow:hidden;font-size:19px;color:#fff;font-weight:500;font-family:'Inter',sans-serif;">A</div>
   </div>
+  <span class="app-line" aria-hidden="true"></span>
 </div>
 <div class="header">
   <div class="header-circles" style="display:flex;gap:20px;margin-bottom:18px;">
@@ -2200,8 +2205,9 @@
       const docTop = r.top + yCur, curH = r.height, ptCur = pad(curEl);
       const withUnder = !NO_UNDER.includes(entry.name);
       const ptPrev = withUnder ? pad(prevEl) : 0;
-      const borderW = appTop ? (parseFloat(getComputedStyle(appTop).borderBottomWidth) || 0) : 0;
       S.curEl = curEl; S.prevEl = prevEl; S.screen = currentScreen; S.yCur = yCur; S.x = 0; S.under = [];
+      // Под экраном главная: линия под шапкой принадлежит уезжающему экрану, у главной её нет — обрезаем линию по его левому краю
+      S.line = (entry.name === 'home' && appTop) ? appTop.querySelector('.app-line') : null;
       root.classList.add('swipe-on');
       // Текущий экран → окно на весь экран; на его месте в потоке — пустая вставка той же высоты
       const sp = document.createElement('div'); sp.className = 'swipe-spacer'; sp.style.height = curH + 'px';
@@ -2214,7 +2220,7 @@
         let topPad = ptPrev + appH;
         if (entry.name === 'home') {
           // у настоящей главной шапка на 1 px ниже (нет линии под ней) и под шапкой ещё кружки с «Сейчас открыто»
-          const base = appH - borderW, src = document.querySelector('.header');
+          const base = appH - 1, src = document.querySelector('.header');
           let hH = 0;
           if (src) {
             const h = src.cloneNode(true);
@@ -2246,7 +2252,9 @@
       const u = 'translate3d(' + (-PARALLAX * (1 - p)) + 'px,0,0)';
       for (const el of S.under) el.style.transform = u;
       if (shade) shade.style.opacity = String(SHADE * (1 - p));
+      if (S.line) clipLine(S.line, S.x);
     }
+    function clipLine(el, x) { const c = 'inset(0 0 0 ' + x + 'px)'; el.style.clipPath = c; el.style.webkitClipPath = c; }
 
     // Вернуть страницу как была. restore — отмена жеста (на всякий случай вернуть прокрутку, если она всё же сдвинулась)
     function cleanup(s, restore) {
@@ -2265,6 +2273,7 @@
         s.prevEl.style.transform = ''; s.prevEl.style.transition = ''; s.prevEl.style.paddingTop = '';
       }
       if (s.hdr) s.hdr.remove();
+      if (s.line) { s.line.style.clipPath = ''; s.line.style.webkitClipPath = ''; s.line.style.transition = ''; }
       if (restore && s.screen === currentScreen && Math.abs(window.scrollY - s.yCur) > 1) window.scrollTo(0, s.yCur);
     }
     function hardReset() { const s = S; S = null; try { cleanup(s, true); } catch {} }
@@ -2280,10 +2289,12 @@
         s.curEl.style.transition = tr;
         for (const el of s.under) el.style.transition = tr;
         shade.style.transition = 'opacity ' + dur + 'ms linear';
+        if (s.line) s.line.style.transition = 'clip-path ' + dur + 'ms cubic-bezier(.22,.7,.28,1), -webkit-clip-path ' + dur + 'ms cubic-bezier(.22,.7,.28,1)';
       }
       s.curEl.style.transform = 'translate3d(' + to + 'px,0,0)';
       for (const el of s.under) el.style.transform = u;
       shade.style.opacity = commit ? '0' : String(SHADE);
+      if (s.line) clipLine(s.line, to);
       if (dur) timer = setTimeout(() => done(s), dur + 40); else done(s);
     }
     function done(s) {
@@ -2295,12 +2306,13 @@
       } else cleanup(s, true);
     }
 
-    function release() {
+    function release(e) {
       const w = window.innerWidth || 1, x = S.x, pts = S.pts, last = pts[pts.length - 1];
       let v = 0;                                           // скорость, px/мс, по последним ~60 мс
       for (let i = pts.length - 2; i >= 0; i--) {
         if (last.t - pts[i].t >= 60 || i === 0) { const dt = last.t - pts[i].t; v = dt > 0 ? (last.x - pts[i].x) / dt : 0; break; }
       }
+      if (e && e.timeStamp - last.t > 80) v = 0;            // палец остановился перед тем, как отпустить, — это не бросок
       settle((x > w * 0.33 && v > -0.25) || (v > 0.5 && x > 24));
     }
 
@@ -2337,9 +2349,9 @@
       } catch { hardReset(); }
     }, { passive: false });
 
-    document.addEventListener('touchend', () => {
+    document.addEventListener('touchend', (e) => {
       if (!S || S.phase === 'anim') return;
-      try { if (S.phase === 'drag') release(); else S = null; } catch { hardReset(); }
+      try { if (S.phase === 'drag') release(e); else S = null; } catch { hardReset(); }
     }, { passive: true });
     document.addEventListener('touchcancel', () => {
       if (!S || S.phase === 'anim') return;
