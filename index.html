@@ -274,6 +274,25 @@
     .screen { display: none; padding: 16px 16px 0; }
     .screen.active { display: block; }
 
+    /* Свайп «назад» от левого края: текущий экран едет за пальцем, под ним — настоящий предыдущий (как в iOS).
+       Текущий экран на время жеста становится окном на весь экран с той же прокруткой (scrollTop = прежняя прокрутка страницы),
+       поэтому он остаётся ровно там же, где был, а страница под ним переключается на предыдущий экран.
+       Шапка (.app-top, z-index 150) и нижнее меню (z-index 200) стоят на месте и лежат выше. */
+    .screen.swipe-cur {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 100;
+      overflow: hidden;
+      background: var(--bg); box-shadow: -14px 0 32px rgba(0,0,0,0.55);
+      will-change: transform;
+    }
+    .screen.swipe-cur::after { content: ''; display: block; height: var(--nav-h); }
+    #swipeShade { display: none; position: fixed; inset: 0; z-index: 90; background: #000; opacity: 0; pointer-events: none; }
+    html.swipe-on { overflow-anchor: none; }
+    html.swipe-on #swipeShade { display: block; }
+    html.swipe-on body { -webkit-user-select: none; user-select: none; }
+    /* Если под экраном — главная: на время жеста показываем кружки и «Сейчас открыто», как на настоящей главной */
+    body.compact-header.swipe-peek .header { display: block; }
+    body.compact-header.swipe-peek .app-top { border-bottom: none; }
+
     /* GRID */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     .grid-1 { margin-bottom: 10px; }
@@ -2102,6 +2121,145 @@
     const need = !!openOverlayEntry() || (!reviewOnlyMode && currentScreen !== 'home');
     try { need ? tg.BackButton.show() : tg.BackButton.hide(); } catch {}
   }
+
+  // ─── Свайп «назад» от левого края ───────────────────────
+  // Экран едет за пальцем, под ним — настоящий предыдущий экран на своём месте прокрутки (как в iOS).
+  // Отпустили дальше трети ширины или резким броском — обычный «назад» (тот же goBack, что у кнопки Telegram);
+  // не дотянули — экран возвращается на место. Не работает: на главной, в «Бар»/«ВИП» (там свои жесты историй),
+  // в отзыве и чаевых по QR и пока открыто любое окно поверх экрана (его закрывает кнопка «назад» как раньше).
+  (function swipeBack() {
+    const EDGE = 28;                 // жест начинается не дальше 28 px от левого края
+    const SHADE = 0.5;               // затемнение предыдущего экрана в начале жеста
+    const NO_SWIPE = ['home', 'bar', 'vip', 'review', 'tips'];
+    const NO_UNDER = ['bar', 'vip', 'review', 'tips'];   // под этими экранами не показываем «предыдущий»: они на весь экран
+    const root = document.documentElement;
+    let S = null, shade = null, timer = 0;
+
+    const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+    const allowed = () => !reviewOnlyMode && !NO_SWIPE.includes(currentScreen) && !openOverlayEntry();
+    const touchOf = (e, id) => { for (const t of e.touches) if (t.identifier === id) return t; return null; };
+
+    function begin() {
+      const entry = navStack[navStack.length - 1] || { name: 'home', y: 0 };
+      const curEl = document.getElementById('screen-' + currentScreen);
+      const prevEl = document.getElementById('screen-' + entry.name);
+      if (!curEl || !prevEl || curEl === prevEl) return false;
+      const docTop = curEl.getBoundingClientRect().top + window.scrollY;
+      const pt = parseFloat(getComputedStyle(curEl).paddingTop) || 0;
+      S.curEl = curEl; S.screen = currentScreen; S.yCur = window.scrollY; S.x = 0;
+      root.classList.add('swipe-on');
+      curEl.style.paddingTop = (pt + docTop) + 'px';     // верх окна = верх страницы, чтобы прокрутка совпала
+      curEl.classList.add('swipe-cur');
+      curEl.scrollTop = S.yCur;
+      if (!NO_UNDER.includes(entry.name)) {
+        if (entry.name === 'home') document.body.classList.add('swipe-peek');
+        prevEl.classList.add('active');
+        window.scrollTo(0, entry.y || 0);
+      }
+      if (!shade) { shade = document.createElement('div'); shade.id = 'swipeShade'; document.body.appendChild(shade); }
+      shade.style.transition = 'none';
+      shade.style.opacity = String(SHADE);
+      return true;
+    }
+
+    function setX(x) {
+      const w = window.innerWidth || 1;
+      S.x = Math.max(0, Math.min(w, x));
+      S.curEl.style.transform = 'translate3d(' + S.x + 'px,0,0)';
+      if (shade) shade.style.opacity = String(SHADE * (1 - S.x / w));
+    }
+
+    // restore: вернуть всё как было (отмена жеста). Без restore — «назад» уже выполнен, страница в нужном состоянии.
+    function cleanup(s, restore) {
+      clearTimeout(timer);
+      if (S === s) S = null;
+      root.classList.remove('swipe-on');
+      document.body.classList.remove('swipe-peek');
+      if (shade) { shade.style.transition = ''; shade.style.opacity = '0'; }
+      if (s && s.curEl) {
+        const c = s.curEl;
+        c.classList.remove('swipe-cur');
+        c.style.transform = ''; c.style.transition = ''; c.style.paddingTop = '';
+      }
+      if (restore) {
+        screens.forEach(n => document.getElementById('screen-' + n).classList.toggle('active', n === currentScreen));
+        if (s && s.screen === currentScreen) window.scrollTo(0, s.yCur);
+      }
+    }
+    function hardReset() { const s = S; S = null; try { cleanup(s, true); } catch {} }
+
+    function settle(commit) {
+      const s = S;
+      s.phase = 'anim'; s.commit = commit;
+      const w = window.innerWidth || 1, to = commit ? w : 0;
+      const dur = reduced() ? 0 : Math.round(110 + 190 * Math.abs(to - s.x) / w);
+      if (dur) {
+        s.curEl.style.transition = 'transform ' + dur + 'ms cubic-bezier(.22,.7,.28,1)';
+        shade.style.transition = 'opacity ' + dur + 'ms linear';
+      }
+      s.curEl.style.transform = 'translate3d(' + to + 'px,0,0)';
+      shade.style.opacity = commit ? '0' : String(SHADE);
+      if (dur) timer = setTimeout(() => done(s), dur + 40); else done(s);
+    }
+    function done(s) {
+      if (S !== s) return;
+      if (s.commit && currentScreen === s.screen && !openOverlayEntry()) {
+        try { goBack(); } finally { cleanup(s, false); }
+      } else cleanup(s, true);
+    }
+
+    function release() {
+      const w = window.innerWidth || 1, x = S.x, pts = S.pts, last = pts[pts.length - 1];
+      let v = 0;                                           // скорость, px/мс, по последним ~60 мс
+      for (let i = pts.length - 2; i >= 0; i--) {
+        if (last.t - pts[i].t >= 60 || i === 0) { const dt = last.t - pts[i].t; v = dt > 0 ? (last.x - pts[i].x) / dt : 0; break; }
+      }
+      settle((x > w * 0.33 && v > -0.25) || (v > 0.5 && x > 24));
+    }
+
+    document.addEventListener('touchstart', e => {
+      try {
+        if (S) {
+          if (S.phase !== 'anim' && e.touches.length > 1) { if (S.phase === 'drag') settle(false); else S = null; }
+          return;
+        }
+        if (e.touches.length !== 1) return;
+        const t = e.touches[0];
+        if (t.clientX > EDGE || !allowed()) return;
+        S = { phase: 'wait', id: t.identifier, x0: t.clientX, y0: t.clientY, base: 0, pts: [{ x: t.clientX, t: e.timeStamp }] };
+      } catch { hardReset(); }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', e => {
+      if (!S || S.phase === 'anim') return;
+      try {
+        const t = touchOf(e, S.id);
+        if (!t || e.touches.length > 1) { if (S.phase === 'drag') settle(false); else S = null; return; }
+        const dx = t.clientX - S.x0, dy = t.clientY - S.y0;
+        if (S.phase === 'wait') {
+          if (dx < -12 || (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx))) { S = null; return; }   // это прокрутка, а не жест
+          if (!(dx > 8 && dx > Math.abs(dy) * 1.3)) return;
+          if (!allowed() || !begin()) { S = null; return; }
+          S.phase = 'drag'; S.base = dx;
+        }
+        if (currentScreen !== S.screen || openOverlayEntry()) { cleanup(S, true); return; }   // пока тянули, экран сменился или открылось окно
+        if (e.cancelable) e.preventDefault();
+        S.pts.push({ x: t.clientX, t: e.timeStamp });
+        if (S.pts.length > 8) S.pts.shift();
+        setX(dx - S.base);
+      } catch { hardReset(); }
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+      if (!S || S.phase === 'anim') return;
+      try { if (S.phase === 'drag') release(); else S = null; } catch { hardReset(); }
+    }, { passive: true });
+    document.addEventListener('touchcancel', () => {
+      if (!S || S.phase === 'anim') return;
+      try { if (S.phase === 'drag') settle(false); else S = null; } catch { hardReset(); }
+    }, { passive: true });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && S) hardReset(); });
+  })();
 
   function resetAndShowBook() {
     bookingContext = null;
