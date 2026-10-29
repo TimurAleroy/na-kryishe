@@ -1008,7 +1008,7 @@
       --tp-btn: clamp(48px, calc(var(--tp-vh) * .09 - 14px), 64px);
       --tp-amt: clamp(42px, calc(var(--tp-vh) * .12 - 24px), 84px);
       --tp-chip: clamp(30px, calc(var(--tp-vh) * .07 - 10px), 46px);
-      --tp-av: clamp(26px, calc(var(--tp-vh) * .06 - 8px), 42px);
+      --tp-av: clamp(30px, calc(var(--tp-vh) * .09 - 24px), 56px);
     }
     body.tips-mode { padding-bottom: 0; }
     #screen-tips.active { display: flex; flex-direction: column; min-height: var(--tp-vh); padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
@@ -1034,6 +1034,10 @@
     .tp-who button[aria-pressed="true"] { border-color: var(--accent); background: var(--tp-off-bg); color: var(--text); }
     .tp-av { width: var(--tp-av); height: var(--tp-av); border-radius: 50%; display: grid; place-items: center; font: 600 calc(var(--tp-av) * .4)/1 'Inter', sans-serif; background: var(--tp-off-bg); color: var(--text-sub); letter-spacing: .02em; transition: background-color .15s, color .15s; }
     .tp-who button[aria-pressed="true"] .tp-av { background: var(--accent); color: var(--tp-on-accent); }
+    .tp-av { position: relative; overflow: hidden; flex: 0 0 auto; }
+    .tp-av .tp-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; opacity: 0; transition: opacity .25s ease; -webkit-user-drag: none; user-select: none; }
+    .tp-av .tp-ph.tp-on { opacity: 1; }
+    .tp-who button[aria-pressed="true"] .tp-av.tp-has-ph { box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--accent); }
     .tp-frame { margin-top: 6px; flex: 1 1 auto; min-height: calc(var(--tp-amt) * 1.05); display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .tp-shake { display: flex; }
     .tp-amt { position: relative; display: flex; align-items: baseline; white-space: nowrap; font-weight: 600; font-size: var(--tp-amt); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--text);
@@ -1081,7 +1085,7 @@
     }
     /* Совсем низкие экраны (например, iPhone SE): ещё теснее; если и так не помещается — страница просто прокручивается, кнопка в конце */
     @media (max-height: 620px) {
-      #screen-tips { --tp-key: 42px; --tp-btn: 48px; --tp-amt: 42px; --tp-chip: 30px; --tp-av: 26px; }
+      #screen-tips { --tp-key: 42px; --tp-btn: 48px; --tp-amt: 42px; --tp-chip: 30px; --tp-av: 30px; }
       .tp-hero { padding: 4px 16px; margin-bottom: 6px; background: none; border-color: transparent; }
       .tp-hero h2 { font-size: 17px; }
       .tp-pad { padding: 10px 10px 8px; }
@@ -1093,7 +1097,7 @@
       .tp-err { min-height: 14px; margin-top: 4px; font-size: 12px; }
     }
     .tp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    @media (prefers-reduced-motion: reduce) { .tp-amt, .tp-hint span, .tp-send, .tp-send .tp-lbl, .tp-who button, .tp-av { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .tp-amt, .tp-hint span, .tp-send, .tp-send .tp-lbl, .tp-who button, .tp-av, .tp-av .tp-ph { transition: none; } }
 
   </style>
 </head>
@@ -4354,7 +4358,7 @@
     function apply(c) {
       if (!c || !c.enabled) { cfg = null; showState('Сейчас чаевые не принимаются. Спасибо, что заглянули!'); return; }
       cfg = c;
-      items = (c.mode === 'team' ? [] : c.staff.map((s) => ({ id: s.id, name: s.name, role: s.role })));
+      items = (c.mode === 'team' ? [] : c.staff.map((s) => ({ id: s.id, name: s.name, role: s.role, photo: /^https?:\/\//.test(s.photo || '') ? s.photo : '' })));
       if (c.mode !== 'person') items.push({ id: null, name: 'Вся команда', role: 'все вместе' });
       // выбранный ушёл со смены — выбор сбрасываем; если вариант один, он выбран сам
       if (!who || !items.some((i) => i.id === who.id)) who = items.length === 1 ? items[0] : null;
@@ -4366,12 +4370,24 @@
     }
 
     // ── кому ──
+    // Фото сотрудника — круг поверх инициалов: пока грузится (или не загрузилось) видны инициалы, как раньше; готовое плавно проявляется.
+    // Уже загруженное раньше (кэш телефона) показывается сразу, без проявления — иначе при каждом обновлении списка было бы мигание.
+    function addPhoto(av, url) {
+      const im = document.createElement('img');
+      im.className = 'tp-ph'; im.alt = ''; im.decoding = 'async'; im.referrerPolicy = 'no-referrer'; im.draggable = false;
+      im.src = url;
+      const ok = () => { im.classList.add('tp-on'); av.classList.add('tp-has-ph'); };
+      if (im.complete && im.naturalWidth) ok();
+      else { im.addEventListener('load', () => { if (im.naturalWidth) { requestAnimationFrame(ok); } else im.remove(); }, { once: true }); im.addEventListener('error', () => im.remove(), { once: true }); }
+      av.appendChild(im);
+    }
     function buildWho() {
       const el = $('tpWho'); el.textContent = '';
       el.classList.toggle('tp-scroll', items.length > 3);
       items.forEach((p) => {
         const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', who && p.id === who.id ? 'true' : 'false');
         b.innerHTML = '<span class="tp-av">' + escHtml(ini(p.name)) + '</span><span>' + escHtml(p.name) + '</span><small>' + escHtml(String(p.role).toLowerCase()) + '</small>';
+        if (p.photo) addPhoto(b.firstChild, p.photo);
         b.addEventListener('click', () => { who = p; sendKey = ''; clearSent(); showErr(''); haptic(); [].forEach.call(el.children, (c, i) => c.setAttribute('aria-pressed', items[i].id === p.id ? 'true' : 'false')); update(); });
         el.appendChild(b);
       });
