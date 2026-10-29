@@ -420,7 +420,7 @@
       margin-bottom: 14px; cursor: pointer; transition: border-color 0.2s, transform 0.15s;
     }
     .ev-card:active { transform: scale(0.99); border-color: rgba(184,115,51,0.4); }
-    .ev-poster { position: relative; aspect-ratio: 4 / 5; background: #140a03; overflow: hidden; }
+    .ev-poster { position: relative; aspect-ratio: 4 / 5; background: #140a03; overflow: hidden; contain: paint; -webkit-transform: translateZ(0); transform: translateZ(0); }
     .ev-poster img, .ev-poster video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .ev-ph {
       position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
@@ -448,6 +448,16 @@
     .evd-poster { position: relative; border-radius: 24px; overflow: hidden; border: 1px solid var(--border); background: #140a03; }
     .evd-poster img, .evd-poster video { display: block; width: 100%; height: auto; }
     .evd-poster.ph { aspect-ratio: 4 / 5; }
+    /* Видео на экране мероприятия: место под него занято сразу (размер кадра известен с карточки), поверх — кадр, который гость
+       только что видел в афише; он тает, когда видео заиграло. Так нет ни чёрного квадрата, ни скачка высоты. */
+    .evd-poster.vid { aspect-ratio: 4 / 5; contain: paint; -webkit-transform: translateZ(0); transform: translateZ(0); }
+    .evd-poster.vid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .evd-snap { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; pointer-events: none; }
+    .evd-snap.gone { opacity: 0; }
+    /* Афиша и экран мероприятия: под шапкой и нижним меню едет играющее видео. Размытие под ним iPhone пересчитывает
+       на каждом кадре прокрутки, поэтому здесь панели просто чуть плотнее и без размытия. */
+    html[data-screen="events"] .app-top, html[data-screen="event"] .app-top { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(30,16,4,0.96); }
+    html[data-screen="events"] .bottom-nav, html[data-screen="event"] .bottom-nav { -webkit-backdrop-filter: none; backdrop-filter: none; background-image: linear-gradient(rgba(36,16,5,0.94), rgba(36,16,5,0.94)), var(--rim); }
     .evd-sec { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 21px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text); margin: 28px 0 14px; }
     .evd-facts { display: flex; flex-wrap: wrap; gap: 14px 32px; padding-top: 14px; border-top: 1px solid var(--border); margin-bottom: 18px; }
     .evd-facts .l { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
@@ -2118,6 +2128,7 @@
       }
     }
     currentScreen = name;
+    document.documentElement.dataset.screen = name;
     document.body.classList.toggle('compact-header', name !== 'home');
     if (name !== 'bar' && typeof storiesState !== 'undefined' && storiesState.bar.timer) {
       clearTimeout(storiesState.bar.timer);
@@ -2212,6 +2223,7 @@
       // Под экраном главная: линия под шапкой принадлежит уезжающему экрану, у главной её нет — обрезаем линию по его левому краю
       S.line = (entry.name === 'home' && appTop) ? appTop.querySelector('.app-line') : null;
       root.classList.add('swipe-on');
+      if (typeof evFreeze === 'function') evFreeze(true);
       // Текущий экран → окно на весь экран; на его месте в потоке — пустая вставка той же высоты
       const sp = document.createElement('div'); sp.className = 'swipe-spacer'; sp.style.height = curH + 'px';
       curEl.parentNode.insertBefore(sp, curEl); S.spacer = sp;
@@ -2264,6 +2276,7 @@
       clearTimeout(timer);
       if (S === s) S = null;
       root.classList.remove('swipe-on');
+      if (typeof evFreeze === 'function') evFreeze(false);
       if (shade) { shade.style.transition = ''; shade.style.opacity = '0'; }
       if (!s) return;
       if (s.curEl) {
@@ -2964,30 +2977,91 @@
     const p = evParts(e.date);
     return `<div class="ev-ph"><div class="d">${p.day}</div><div class="m">${evEsc(p.monShort)}</div>${e.format ? `<div class="f">${evEsc(e.format)}</div>` : ''}</div>`;
   }
-  // Вместо фото может быть короткое видео: без звука, по кругу, играет только пока видно на экране
-  function evMediaHTML(e, lazy) {
+  // Вместо фото может быть короткое видео: без звука, по кругу. Играет только то, что видно на экране, и не больше одного сразу
+  // (два-три видео одновременно на телефоне — это и просадки прокрутки, и нагрев).
+  function evMediaHTML(e, lazy, deferred) {
     if (!e.poster) return '';
     if (e.posterType === 'video') {
-      return `<video class="ev-vid" src="${evEsc(e.poster)}#t=0.1" muted loop playsinline preload="metadata" aria-label="${evEsc(e.name)}" onerror="this.remove()"></video>`;
+      return `<video class="ev-vid" src="${evEsc(e.poster)}#t=0.1" muted loop playsinline preload="${deferred ? 'none' : 'metadata'}" aria-label="${evEsc(e.name)}" onerror="this.remove()"></video>`;
     }
     return `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}"${lazy ? ' loading="lazy"' : ''} onerror="this.remove()">`;
   }
-  function evPosterHTML(e) {
-    return evPlaceholderHTML(e) + evMediaHTML(e, true);
+  function evPosterHTML(e, deferred) {
+    return evPlaceholderHTML(e) + evMediaHTML(e, true, deferred);
   }
-  let evVideoObserver = null;
+  // Размер кадра видео по адресу — известен, как только карточка загрузила начало видео
+  const evVidDims = {};
+  document.addEventListener('loadedmetadata', ev => {
+    const v = ev.target;
+    if (v && v.classList && v.classList.contains('ev-vid') && v.videoWidth) evVidDims[(v.currentSrc || v.src || '').split('#')[0]] = { w: v.videoWidth, h: v.videoHeight };
+  }, true);
+  // Кадр, который гость только что видел в афише (и размер видео): берём с карточки до того, как экран перерисуется
+  function evSnapshot(url) {
+    let abs = url; try { abs = new URL(url, location.href).href; } catch {}
+    const v = Array.prototype.find.call(document.querySelectorAll('video.ev-vid'), x => x.videoWidth && x.readyState >= 2 && (x.currentSrc || x.src).split('#')[0] === abs);
+    const dim = evVidDims[abs];
+    if (!v) return dim ? { w: dim.w, h: dim.h } : null;
+    const snap = { w: v.videoWidth, h: v.videoHeight, t: v.currentTime || 0 };
+    try {
+      const k = Math.min(1, 720 / snap.w), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(snap.w * k)); c.height = Math.max(1, Math.round(snap.h * k));
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      snap.canvas = c;
+    } catch {}
+    return snap;
+  }
+  // Видео на экране мероприятия: поверх — кадр из афиши (или заглушка с датой), видео стартует с того же места и проявляется
+  function evDetailVideoInit(root, e, snap) {
+    const box = root.querySelector('.evd-poster.vid');
+    const v = box && box.querySelector('video');
+    if (!v) return;
+    let cover = snap && snap.canvas;
+    if (!cover) { const d = document.createElement('div'); d.innerHTML = evPlaceholderHTML(e); cover = d.firstChild; }
+    cover.classList.add('evd-snap');
+    box.appendChild(cover);
+    let gone = false, tm = 0;
+    const drop = () => { if (gone) return; gone = true; clearTimeout(tm); cover.classList.add('gone'); setTimeout(() => cover.remove(), 360); };
+    v.addEventListener('playing', drop, { once: true });
+    v.addEventListener('canplay', () => { tm = setTimeout(drop, 700); }, { once: true });   // автозапуск запрещён (экономия заряда) — остаётся кадр самого видео
+    v.addEventListener('loadedmetadata', () => {
+      if (!snap && v.videoWidth) box.style.aspectRatio = v.videoWidth + ' / ' + v.videoHeight;
+      if (snap && snap.t) { try { v.currentTime = snap.t; } catch {} }
+    }, { once: true });
+    v.addEventListener('error', drop, { once: true });
+    // Маленькие превью «Других событий» подгружаем уже после основного видео, чтобы не отнимать у него канал
+    const late = () => root.querySelectorAll('.evd-other video[preload="none"]').forEach(t => { t.preload = 'metadata'; try { t.load(); } catch {} });
+    v.addEventListener('playing', () => setTimeout(late, 200), { once: true });
+    setTimeout(late, 2500);
+  }
+  let evVideoObserver = null, evFrozen = false;
+  const evRatio = new Map();     // видео → какая доля его на экране
+  function evPick() {
+    if (evFrozen) return;
+    let best = null, bestR = 0.35, cur = null;
+    evRatio.forEach((r, v) => {
+      if (!v.isConnected) { evRatio.delete(v); return; }
+      if (!v.paused && r >= 0.35) cur = v;
+      if (r >= bestR) { best = v; bestR = r; }
+    });
+    if (cur && best && cur !== best && (evRatio.get(cur) || 0) + 0.15 > bestR) best = cur;   // не дёргаем играющее ради почти такого же
+    evRatio.forEach((r, v) => { if (v !== best && !v.paused) v.pause(); });
+    if (best && best.paused) { best.muted = true; const pr = best.play(); if (pr && pr.catch) pr.catch(() => {}); }
+  }
+  // На время свайпа «назад» видео стоят: под пальцем едут сразу два экрана, декодировать ещё и видео им незачем
+  function evFreeze(on) {
+    evFrozen = !!on;
+    if (on) evRatio.forEach((r, v) => { if (!v.paused) v.pause(); });
+    else setTimeout(evPick, 60);
+  }
   function evWatchVideos(root) {
-    const vids = (root || document).querySelectorAll('video.ev-vid');
+    const vids = Array.prototype.filter.call((root || document).querySelectorAll('video.ev-vid'), v => !v.closest('.evd-other'));
     if (!vids.length) return;
-    if (!('IntersectionObserver' in window)) { vids.forEach(v => { v.muted = true; v.play().catch(() => {}); }); return; }
+    if (!('IntersectionObserver' in window)) { vids[0].muted = true; vids[0].play().catch(() => {}); return; }
     if (!evVideoObserver) {
       evVideoObserver = new IntersectionObserver(entries => {
-        for (const en of entries) {
-          const v = en.target;
-          if (en.isIntersecting) { v.muted = true; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
-          else v.pause();
-        }
-      }, { threshold: 0.35 });
+        for (const en of entries) evRatio.set(en.target, en.isIntersecting ? en.intersectionRatio : 0);
+        evPick();
+      }, { threshold: [0, 0.2, 0.35, 0.5, 0.65, 0.8, 1] });
     }
     vids.forEach(v => evVideoObserver.observe(v));
   }
@@ -3024,14 +3098,14 @@
     if (e.format) facts.push(['Детали', e.format]);
     const desc = String(e.description || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
     const others = eventsData.map((x, j) => ({ x, j })).filter(o => o.j !== i);
+    const snap = (e.poster && e.posterType === 'video') ? evSnapshot(e.poster) : null;   // до перерисовки, пока карточка афиши ещё на месте
     document.getElementById('eventDetail').innerHTML = `
       <button class="evd-back" onclick="goBack()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>Афиша</button>
       <div class="evd-title">${evEsc(e.name)}</div>
-      <div class="evd-poster${e.poster ? '' : ' ph'}">${e.poster
-        ? (e.posterType === 'video'
-          ? `<video class="ev-vid" src="${evEsc(e.poster)}#t=0.1" muted loop playsinline preload="metadata" aria-label="${evEsc(e.name)}" onerror="this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPlaceholderHTML(eventsData[${i}]);"></video>`
-          : `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}" onerror="this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPlaceholderHTML(eventsData[${i}]);">`)
-        : evPosterHTML(e)}</div>
+      ${!e.poster ? `<div class="evd-poster ph">${evPosterHTML(e)}</div>`
+        : e.posterType === 'video'
+          ? `<div class="evd-poster vid" style="aspect-ratio:${snap ? snap.w + ' / ' + snap.h : '4 / 5'}"><video class="ev-vid" src="${evEsc(e.poster)}#t=0.1" muted loop playsinline preload="auto" aria-label="${evEsc(e.name)}" onerror="this.parentNode.classList.remove('vid');this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPlaceholderHTML(eventsData[${i}]);"></video></div>`
+          : `<div class="evd-poster"><img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}" onerror="this.parentNode.classList.add('ph');this.parentNode.innerHTML=evPlaceholderHTML(eventsData[${i}]);"></div>`}
       <div class="evd-sec">О событии</div>
       ${facts.length ? `<div class="evd-facts">${facts.map(([l, v]) => `<div><div class="l">${l}:</div><div class="v">${evEsc(v)}</div></div>`).join('')}</div>` : ''}
       <div class="evd-desc">${desc.length ? desc.map(t => `<p>${evEsc(t)}</p>`).join('') : '<p>Подробности вечера уточняйте у администратора — забронируйте стол, и мы свяжемся с вами.</p>'}</div>
@@ -3041,13 +3115,15 @@
       ${others.length ? `<div class="evd-sec">Другие события</div>${others.map(({ x, j }) => {
         const q = evParts(x.date);
         return `<div class="evd-other" onclick="openEventDetail(${j})">
-          <div class="th">${evPosterHTML(x)}</div>
+          <div class="th">${evPosterHTML(x, true)}</div>
           <div style="min-width:0"><div class="when">${[q.dateLabel, q.time].filter(Boolean).join(' · ')}</div><div class="nm">${evEsc(x.name)}</div></div>
         </div>`;
       }).join('')}` : ''}
       <div style="height:24px"></div>`;
     showScreen('event');
-    evWatchVideos(document.getElementById('eventDetail'));
+    const detail = document.getElementById('eventDetail');
+    evDetailVideoInit(detail, e, snap);
+    evWatchVideos(detail);
   }
 
   function bookForEventIdx(i) {
