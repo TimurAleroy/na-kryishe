@@ -275,23 +275,21 @@
     .screen.active { display: block; }
 
     /* Свайп «назад» от левого края: текущий экран едет за пальцем, под ним — настоящий предыдущий (как в iOS).
-       Текущий экран на время жеста становится окном на весь экран с той же прокруткой (scrollTop = прежняя прокрутка страницы),
-       поэтому он остаётся ровно там же, где был, а страница под ним переключается на предыдущий экран.
-       Шапка (.app-top, z-index 150) и нижнее меню (z-index 200) стоят на месте и лежат выше. */
-    .screen.swipe-cur {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 100;
-      overflow: hidden;
-      background: var(--bg); box-shadow: -14px 0 32px rgba(0,0,0,0.55);
-      will-change: transform;
+       Страница при этом не пересчитывается вообще: на место текущего экрана встаёт пустая вставка той же высоты,
+       прокрутка страницы не меняется, шапка (.app-top, sticky) стоит как стояла. Сами экраны на время жеста —
+       окна на весь экран со своей прокруткой (scrollTop = прокрутка страницы), поэтому лежат ровно там же, где были.
+       Слои: предыдущий экран 50 → затемнение 90 → текущий экран 100 → шапка 150 → нижнее меню 200. */
+    .screen.swipe-cur, .screen.swipe-under {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; background: var(--bg);
     }
-    .screen.swipe-cur::after { content: ''; display: block; height: var(--nav-h); }
+    .screen.swipe-cur { z-index: 100; box-shadow: -14px 0 32px rgba(0,0,0,0.55); will-change: transform; }
+    .screen.swipe-under { display: block; z-index: 50; pointer-events: none; will-change: transform; }
+    .screen.swipe-cur::after, .screen.swipe-under::after { content: ''; display: block; height: var(--nav-h); }
+    .swipe-spacer { display: block; }
+    /* Кружки и «Сейчас открыто» главной — копия для вида под экраном (настоящий блок на других экранах скрыт) */
+    .swipe-hdr { position: fixed; left: 0; right: 0; z-index: 51; padding: 6px 16px 18px; border-bottom: 1px solid var(--border); pointer-events: none; will-change: transform; }
     #swipeShade { display: none; position: fixed; inset: 0; z-index: 90; background: #000; opacity: 0; pointer-events: none; }
-    html.swipe-on { overflow-anchor: none; }
     html.swipe-on #swipeShade { display: block; }
-    html.swipe-on body { -webkit-user-select: none; user-select: none; }
-    /* Если под экраном — главная: на время жеста показываем кружки и «Сейчас открыто», как на настоящей главной */
-    body.compact-header.swipe-peek .header { display: block; }
-    body.compact-header.swipe-peek .app-top { border-bottom: none; }
 
     /* GRID */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
@@ -996,11 +994,27 @@
       --tp-off-bg: rgba(240,223,192,0.07); --tp-key-hover: rgba(240,223,192,0.06); --tp-key-press: rgba(240,223,192,0.12); --tp-on-accent: #1E1004;
     }
     #screen-tips [hidden] { display: none !important; }
+    /* Экран чаевых занимает ровно видимую высоту мини-приложения: все клавиши и кнопка «Оставить» видны сразу, без прокрутки.
+       Раньше кнопка была «липкой» и ездила поверх нижнего ряда цифр (00, 0, ⌫), плюс снизу оставался пустой отступ под меню,
+       которого на этом экране нет. Лишняя высота уходит в область суммы; на низких экранах всё ужимается ступенями ниже. */
+    #screen-tips { --tp-vh: var(--tg-viewport-stable-height, 100vh); }
+    @supports (height: 100dvh) { #screen-tips { --tp-vh: var(--tg-viewport-stable-height, 100dvh); } }
+    body.tips-mode { padding-bottom: 0; }
+    #screen-tips.active { display: flex; flex-direction: column; min-height: var(--tp-vh); padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+    #tpMain { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+    .tp-hero { padding: 10px 16px; margin-bottom: 10px; }
+    .tp-hero h2 { font-size: 18px; letter-spacing: 3px; margin-bottom: 4px; }
+    .tp-hero p { line-height: 1.4; }
     .tp-state { text-align: center; color: var(--text-sub); font-size: 14px; line-height: 1.5; padding: 28px 12px; }
     .tp-state button { margin-top: 14px; height: 44px; padding: 0 22px; border-radius: 14px; border: 1px solid var(--border); background: transparent; color: var(--text); font: 500 14px/1 'Inter', sans-serif; cursor: pointer; }
-    .tp-demo { max-width: 360px; margin: 0 auto 12px; padding: 10px 14px; border-radius: 12px; background: var(--tp-off-bg); color: var(--text-sub); font-size: 12.5px; line-height: 1.45; text-align: center; }
-    .tp-pad { width: 100%; max-width: 360px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 28px; padding: 20px; display: flex; flex-direction: column; }
+    .tp-demo { width: 100%; max-width: 360px; margin: 0 auto 8px; padding: 7px 12px; border-radius: 12px; background: var(--tp-off-bg); color: var(--text-sub); font-size: 12px; line-height: 1.45; text-align: center; }
+    .tp-pad { width: 100%; max-width: 360px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 26px; padding: 14px 14px 12px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
     .tp-who { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    /* Больше трёх вариантов (сотрудники на смене + «Вся команда»): одна строка с боковой прокруткой, четвёртый выглядывает сбоку.
+       Так высота экрана не растёт вторым рядом и клавиши с кнопкой по-прежнему помещаются. */
+    .tp-who.tp-scroll { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 12px) / 3.4); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .tp-who.tp-scroll::-webkit-scrollbar { display: none; }
+    .tp-who.tp-scroll button { scroll-snap-align: start; }
     .tp-who button {
       display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 7px; border-radius: 14px; border: 1px solid var(--border);
       background: transparent; color: var(--text-sub); font: 500 12.5px/1.2 'Inter', sans-serif; cursor: pointer; min-width: 0; transition: border-color .15s, background-color .15s, color .15s;
@@ -1010,7 +1024,7 @@
     .tp-who button[aria-pressed="true"] { border-color: var(--accent); background: var(--tp-off-bg); color: var(--text); }
     .tp-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 600 12px/1 'Inter', sans-serif; background: var(--tp-off-bg); color: var(--text-sub); letter-spacing: .02em; transition: background-color .15s, color .15s; }
     .tp-who button[aria-pressed="true"] .tp-av { background: var(--accent); color: var(--tp-on-accent); }
-    .tp-frame { margin-top: 14px; height: 72px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .tp-frame { margin-top: 6px; flex: 1 1 56px; min-height: 52px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .tp-shake { display: flex; }
     .tp-amt { position: relative; display: flex; align-items: baseline; white-space: nowrap; font-weight: 600; font-size: 56px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--text);
               transform-origin: center; transition: transform .28s cubic-bezier(.23,1,.32,1); }
@@ -1024,16 +1038,16 @@
     .tp-hint .tp-bad { color: var(--tp-bad); opacity: 0; transform: translateY(6px); }
     .tp-pad.tp-capped .tp-hint .tp-bad { opacity: 1; transform: none; }
     .tp-pad.tp-capped .tp-hint .tp-info { opacity: 0; transform: translateY(-6px); }
-    .tp-chips { margin-top: 8px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-    .tp-chips button { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); font: 600 13px/1 'Inter', sans-serif; cursor: pointer; font-variant-numeric: tabular-nums; transition: border-color .15s, background-color .15s, color .15s; }
+    .tp-chips { margin-top: 6px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .tp-chips button { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); font: 600 13px/1 'Inter', sans-serif; cursor: pointer; font-variant-numeric: tabular-nums; transition: border-color .15s, background-color .15s, color .15s; }
     .tp-chips button:hover { background: var(--tp-key-hover); }
     .tp-chips button[aria-pressed="true"] { border-color: var(--accent); background: var(--tp-off-bg); }
-    .tp-keys { margin-top: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-    .tp-keys button { height: 50px; border: 0; border-radius: 16px; background: transparent; color: var(--text); font: 500 24px/1 'Inter', sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; display: grid; place-items: center; touch-action: manipulation; transition: background-color .1s; }
+    .tp-keys { margin-top: 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .tp-keys button { height: 46px; border: 0; border-radius: 16px; background: transparent; color: var(--text); font: 500 24px/1 'Inter', sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; display: grid; place-items: center; touch-action: manipulation; transition: background-color .1s; }
     .tp-keys button:hover { background: var(--tp-key-hover); }
     .tp-keys button:active, .tp-keys button.tp-press { background: var(--tp-key-press); transition: none; }
     .tp-keys svg { width: 26px; height: 26px; stroke: var(--text-muted); fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-    .tp-send { margin-top: 10px; position: sticky; bottom: 14px; z-index: 2; box-shadow: 0 0 0 8px var(--bg-card); height: 52px; border: 0; border-radius: 16px; overflow: hidden; font: 600 15px/1 'Inter', sans-serif; cursor: pointer; background: var(--accent); color: var(--tp-on-accent); transition: background-color .2s, color .2s; }
+    .tp-send { margin-top: 8px; position: relative; height: 52px; border: 0; border-radius: 16px; overflow: hidden; font: 600 15px/1 'Inter', sans-serif; cursor: pointer; background: var(--accent); color: var(--tp-on-accent); transition: background-color .2s, color .2s; }
     .tp-send.tp-off { background: var(--tp-off-bg); color: var(--text-muted); }
     .tp-send.tp-done { background: var(--tp-ok); color: var(--tp-on-ok); }
     .tp-send .tp-lbl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .2s, transform .22s cubic-bezier(.23,1,.32,1); }
@@ -1041,7 +1055,39 @@
     .tp-send.tp-done .tp-lbl.tp-a { opacity: 0; transform: translateY(-12px); }
     .tp-send.tp-done .tp-lbl.tp-b { opacity: 1; transform: none; }
     .tp-send svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    .tp-err { min-height: 20px; margin-top: 10px; text-align: center; font-size: 13px; line-height: 1.4; color: var(--tp-bad); }
+    .tp-err { min-height: 18px; margin-top: 6px; text-align: center; font-size: 12.5px; line-height: 1.4; color: var(--tp-bad); }
+    @media (max-height: 700px) {
+      .tp-hero { padding: 8px 16px; margin-bottom: 8px; }
+      .tp-hero p { display: none; }
+      .tp-hero h2 { margin-bottom: 0; }
+      .tp-demo { padding: 6px 10px; margin-bottom: 6px; }
+      .tp-pad { padding: 12px 12px 10px; }
+      .tp-who button { padding: 6px 4px 5px; gap: 2px; }
+      .tp-av { width: 26px; height: 26px; }
+      .tp-frame { min-height: 46px; }
+      .tp-amt { font-size: 48px; }
+      .tp-chips button { height: 32px; }
+      .tp-keys button { height: 44px; }
+      .tp-send { height: 50px; }
+    }
+    /* Совсем низкие экраны (например, iPhone SE): ещё теснее; если и так не помещается — страница просто прокручивается, кнопка в конце */
+    @media (max-height: 620px) {
+      .tp-hero { padding: 4px 16px; margin-bottom: 6px; background: none; border-color: transparent; }
+      .tp-hero h2 { font-size: 16px; }
+      .tp-demo-more { display: none; }
+      .tp-demo { padding: 5px 10px; margin-bottom: 5px; font-size: 11.5px; }
+      .tp-pad { padding: 10px 10px 8px; }
+      .tp-who button small { display: none; }
+      .tp-frame { min-height: 40px; margin-top: 4px; }
+      .tp-amt { font-size: 40px; }
+      .tp-hint { height: 18px; }
+      .tp-chips { margin-top: 4px; }
+      .tp-chips button { height: 30px; }
+      .tp-keys { margin-top: 4px; }
+      .tp-keys button { height: 42px; }
+      .tp-send { margin-top: 6px; height: 48px; }
+      .tp-err { min-height: 14px; margin-top: 4px; font-size: 12px; }
+    }
     .tp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { .tp-amt, .tp-hint span, .tp-send, .tp-send .tp-lbl, .tp-who button, .tp-av { transition: none; } }
 
@@ -1562,16 +1608,15 @@
 
 <!-- ЧАЕВЫЕ (скрытый экран — вход по QR: ?tips=1 или t.me/<бот>?start=tips). Включает и настраивает администрация в приложении сотрудников -->
 <div class="screen" id="screen-tips">
-  <div style="margin-top:14px"></div>
-  <div class="about-hero" style="padding:14px 20px;margin-bottom:12px;">
-    <h2 style="font-size:20px;letter-spacing:2px;">Чаевые</h2>
+  <div class="about-hero tp-hero">
+    <h2>Чаевые</h2>
     <p id="tpLead">Тому, кто сегодня о вас заботился</p>
   </div>
 
   <div class="tp-state" id="tpState" role="status">Загружаем…</div>
 
   <div id="tpMain" hidden>
-    <div class="tp-demo" id="tpDemo" hidden>Тестовый режим: оплата ещё не подключена, деньги не списываются.</div>
+    <div class="tp-demo" id="tpDemo" hidden>Тестовый режим: <span class="tp-demo-more">оплата ещё не подключена, </span>деньги не списываются.</div>
     <section class="tp-pad" id="tpPad" aria-label="Чаевые">
       <div class="tp-who" id="tpWho" role="group" aria-label="Кому"></div>
       <div class="tp-frame" id="tpFrame">
@@ -2127,9 +2172,12 @@
   // Отпустили дальше трети ширины или резким броском — обычный «назад» (тот же goBack, что у кнопки Telegram);
   // не дотянули — экран возвращается на место. Не работает: на главной, в «Бар»/«ВИП» (там свои жесты историй),
   // в отзыве и чаевых по QR и пока открыто любое окно поверх экрана (его закрывает кнопка «назад» как раньше).
+  // Важно для iPhone: пока палец на экране, страница не пересчитывается (высота, прокрутка, шапка остаются как были) —
+  // иначе закреплённая шапка на пару кадров пропадала. Менять страницу можно только в самом конце, одним махом.
   (function swipeBack() {
     const EDGE = 28;                 // жест начинается не дальше 28 px от левого края
     const SHADE = 0.5;               // затемнение предыдущего экрана в начале жеста
+    const PARALLAX = 64;             // предыдущий экран в начале жеста чуть сдвинут влево и подъезжает на место
     const NO_SWIPE = ['home', 'bar', 'vip', 'review', 'tips'];
     const NO_UNDER = ['bar', 'vip', 'review', 'tips'];   // под этими экранами не показываем «предыдущий»: они на весь экран
     const root = document.documentElement;
@@ -2138,23 +2186,51 @@
     const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
     const allowed = () => !reviewOnlyMode && !NO_SWIPE.includes(currentScreen) && !openOverlayEntry();
     const touchOf = (e, id) => { for (const t of e.touches) if (t.identifier === id) return t; return null; };
+    const pad = (el) => parseFloat(getComputedStyle(el).paddingTop) || 0;
 
     function begin() {
       const entry = navStack[navStack.length - 1] || { name: 'home', y: 0 };
       const curEl = document.getElementById('screen-' + currentScreen);
       const prevEl = document.getElementById('screen-' + entry.name);
       if (!curEl || !prevEl || curEl === prevEl) return false;
-      const docTop = curEl.getBoundingClientRect().top + window.scrollY;
-      const pt = parseFloat(getComputedStyle(curEl).paddingTop) || 0;
-      S.curEl = curEl; S.screen = currentScreen; S.yCur = window.scrollY; S.x = 0;
+      // Сначала всё измеряем, потом меняем (страница в этот момент ещё не тронута)
+      const appTop = document.querySelector('.app-top');
+      const appH = appTop ? appTop.getBoundingClientRect().height : 0;
+      const yCur = window.scrollY, r = curEl.getBoundingClientRect();
+      const docTop = r.top + yCur, curH = r.height, ptCur = pad(curEl);
+      const withUnder = !NO_UNDER.includes(entry.name);
+      const ptPrev = withUnder ? pad(prevEl) : 0;
+      const borderW = appTop ? (parseFloat(getComputedStyle(appTop).borderBottomWidth) || 0) : 0;
+      S.curEl = curEl; S.prevEl = prevEl; S.screen = currentScreen; S.yCur = yCur; S.x = 0; S.under = [];
       root.classList.add('swipe-on');
-      curEl.style.paddingTop = (pt + docTop) + 'px';     // верх окна = верх страницы, чтобы прокрутка совпала
+      // Текущий экран → окно на весь экран; на его месте в потоке — пустая вставка той же высоты
+      const sp = document.createElement('div'); sp.className = 'swipe-spacer'; sp.style.height = curH + 'px';
+      curEl.parentNode.insertBefore(sp, curEl); S.spacer = sp;
+      curEl.style.paddingTop = (ptCur + docTop) + 'px';
       curEl.classList.add('swipe-cur');
-      curEl.scrollTop = S.yCur;
-      if (!NO_UNDER.includes(entry.name)) {
-        if (entry.name === 'home') document.body.classList.add('swipe-peek');
-        prevEl.classList.add('active');
-        window.scrollTo(0, entry.y || 0);
+      curEl.scrollTop = yCur;
+      // Предыдущий экран → такое же окно под ним, прокрученное на сохранённое место
+      if (withUnder) {
+        let topPad = ptPrev + appH;
+        if (entry.name === 'home') {
+          // у настоящей главной шапка на 1 px ниже (нет линии под ней) и под шапкой ещё кружки с «Сейчас открыто»
+          const base = appH - borderW, src = document.querySelector('.header');
+          let hH = 0;
+          if (src) {
+            const h = src.cloneNode(true);
+            h.classList.remove('header'); h.classList.add('swipe-hdr'); h.setAttribute('aria-hidden', 'true');
+            h.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+            h.style.top = (base - (entry.y || 0)) + 'px';
+            document.body.appendChild(h); hH = h.getBoundingClientRect().height;
+            S.hdr = h; S.under.push(h);
+          }
+          topPad = ptPrev + base + hH;
+        }
+        prevEl.style.paddingTop = topPad + 'px';
+        prevEl.classList.add('swipe-under');
+        prevEl.scrollTop = entry.y || 0;
+        S.under.push(prevEl); S.hasUnder = true;
+        S.under.forEach(el => { el.style.transform = 'translate3d(' + (-PARALLAX) + 'px,0,0)'; });
       }
       if (!shade) { shade = document.createElement('div'); shade.id = 'swipeShade'; document.body.appendChild(shade); }
       shade.style.transition = 'none';
@@ -2165,26 +2241,31 @@
     function setX(x) {
       const w = window.innerWidth || 1;
       S.x = Math.max(0, Math.min(w, x));
+      const p = S.x / w;
       S.curEl.style.transform = 'translate3d(' + S.x + 'px,0,0)';
-      if (shade) shade.style.opacity = String(SHADE * (1 - S.x / w));
+      const u = 'translate3d(' + (-PARALLAX * (1 - p)) + 'px,0,0)';
+      for (const el of S.under) el.style.transform = u;
+      if (shade) shade.style.opacity = String(SHADE * (1 - p));
     }
 
-    // restore: вернуть всё как было (отмена жеста). Без restore — «назад» уже выполнен, страница в нужном состоянии.
+    // Вернуть страницу как была. restore — отмена жеста (на всякий случай вернуть прокрутку, если она всё же сдвинулась)
     function cleanup(s, restore) {
       clearTimeout(timer);
       if (S === s) S = null;
       root.classList.remove('swipe-on');
-      document.body.classList.remove('swipe-peek');
       if (shade) { shade.style.transition = ''; shade.style.opacity = '0'; }
-      if (s && s.curEl) {
-        const c = s.curEl;
-        c.classList.remove('swipe-cur');
-        c.style.transform = ''; c.style.transition = ''; c.style.paddingTop = '';
+      if (!s) return;
+      if (s.curEl) {
+        s.curEl.classList.remove('swipe-cur');
+        s.curEl.style.transform = ''; s.curEl.style.transition = ''; s.curEl.style.paddingTop = '';
       }
-      if (restore) {
-        screens.forEach(n => document.getElementById('screen-' + n).classList.toggle('active', n === currentScreen));
-        if (s && s.screen === currentScreen) window.scrollTo(0, s.yCur);
+      if (s.spacer) s.spacer.remove();
+      if (s.hasUnder && s.prevEl) {
+        s.prevEl.classList.remove('swipe-under');
+        s.prevEl.style.transform = ''; s.prevEl.style.transition = ''; s.prevEl.style.paddingTop = '';
       }
+      if (s.hdr) s.hdr.remove();
+      if (restore && s.screen === currentScreen && Math.abs(window.scrollY - s.yCur) > 1) window.scrollTo(0, s.yCur);
     }
     function hardReset() { const s = S; S = null; try { cleanup(s, true); } catch {} }
 
@@ -2193,18 +2274,24 @@
       s.phase = 'anim'; s.commit = commit;
       const w = window.innerWidth || 1, to = commit ? w : 0;
       const dur = reduced() ? 0 : Math.round(110 + 190 * Math.abs(to - s.x) / w);
+      const u = 'translate3d(' + (commit ? 0 : -PARALLAX) + 'px,0,0)';
       if (dur) {
-        s.curEl.style.transition = 'transform ' + dur + 'ms cubic-bezier(.22,.7,.28,1)';
+        const tr = 'transform ' + dur + 'ms cubic-bezier(.22,.7,.28,1)';
+        s.curEl.style.transition = tr;
+        for (const el of s.under) el.style.transition = tr;
         shade.style.transition = 'opacity ' + dur + 'ms linear';
       }
       s.curEl.style.transform = 'translate3d(' + to + 'px,0,0)';
+      for (const el of s.under) el.style.transform = u;
       shade.style.opacity = commit ? '0' : String(SHADE);
       if (dur) timer = setTimeout(() => done(s), dur + 40); else done(s);
     }
     function done(s) {
       if (S !== s) return;
       if (s.commit && currentScreen === s.screen && !openOverlayEntry()) {
-        try { goBack(); } finally { cleanup(s, false); }
+        // Сначала убираем всё лишнее, потом обычный «назад» — в одном кадре, без промежуточной картинки
+        cleanup(s, false);
+        goBack();
       } else cleanup(s, true);
     }
 
@@ -4271,6 +4358,7 @@
     // ── кому ──
     function buildWho() {
       const el = $('tpWho'); el.textContent = '';
+      el.classList.toggle('tp-scroll', items.length > 3);
       items.forEach((p) => {
         const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', who && p.id === who.id ? 'true' : 'false');
         b.innerHTML = '<span class="tp-av">' + escHtml(ini(p.name)) + '</span><span>' + escHtml(p.name) + '</span><small>' + escHtml(String(p.role).toLowerCase()) + '</small>';
@@ -4487,6 +4575,7 @@
     const tgWantsTips = tgStartParam === 'tips' || tgStartParam === 'tips1';
     if (urlWantsTips || tgWantsTips) {
       reviewOnlyMode = true;
+      document.body.classList.add('tips-mode');   // без нижнего отступа под меню (меню здесь нет), экран на всю видимую высоту
       openTips();
       const nav = document.querySelector('.bottom-nav');
       if (nav) nav.style.display = 'none';
