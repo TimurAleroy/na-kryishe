@@ -1109,6 +1109,60 @@
     .tp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { .tp-amt, .tp-hint span, .tp-send, .tp-send .tp-lbl, .tp-who button, .tp-av, .tp-av .tp-ph { transition: none; } }
 
+
+    /* ═══ ОПРОС ИЗ КОНСТРУКТОРА ═══ Оформление приходит с сервера (цвета, логотип, фон) и задаётся переменными --sv-* на .svy */
+    body.svy-mode { background: var(--sv-bg, #1E1004); }
+    #screen-survey { padding: 0; }
+    .svy { --sv-bg: #1e1004; --sv-field: #2a160f; --sv-accent: #b87333; --sv-text: #f0dfc0; --sv-text2: #a2836a; --sv-btn: #1e1004;
+           --sv-field-a: rgba(42,22,15,.92); --sv-line: rgba(240,223,192,.22); --sv-dim: rgba(240,223,192,.12);
+           position: relative; min-height: 100vh; min-height: 100dvh; color: var(--sv-text); font-family: 'Inter', sans-serif; }
+    .svy-bg { position: fixed; inset: 0; z-index: 0; background: var(--sv-bg) center / cover no-repeat; }
+    .svy-bg[data-tint="1"]::after { content: ''; position: absolute; inset: 0; background: var(--sv-bg); opacity: .74; }
+    .svy-in { position: relative; z-index: 1; max-width: 540px; margin: 0 auto; padding: 22px 18px calc(24px + env(safe-area-inset-bottom)); min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; box-sizing: border-box; }
+    .svy-logo { text-align: center; margin: 0 0 18px; }
+    .svy-logo img { max-height: 60px; max-width: 72%; object-fit: contain; }
+    .svy-banner { background: var(--sv-accent); color: var(--sv-btn); font-size: 12px; text-align: center; padding: 6px 10px; border-radius: 10px; margin: 0 0 14px; }
+    .svy-center { margin: auto 0; text-align: center; padding: 8px 0 24px; }
+    .svy-h { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 24px; line-height: 1.28; margin: 0 0 14px; color: var(--sv-text); overflow-wrap: anywhere; }
+    .svy-p { font-size: 15px; line-height: 1.5; color: var(--sv-text2); margin: 0 0 22px; white-space: pre-line; overflow-wrap: anywhere; }
+    .svy-note { font-size: 12.5px; color: var(--sv-text2); margin: 0 0 16px; line-height: 1.45; }
+    .svy-btn { display: block; width: 100%; border: 0; border-radius: 14px; padding: 15px 18px; background: var(--sv-accent); color: var(--sv-btn); font: 500 15px 'Inter', sans-serif; letter-spacing: .2px; cursor: pointer; }
+    .svy-btn:disabled { opacity: .45; cursor: default; }
+    .svy-btn.ghost { background: transparent; color: var(--sv-text); border: 1.5px solid var(--sv-line); }
+    .svy-consent { display: flex; gap: 12px; align-items: flex-start; text-align: left; background: var(--sv-field-a); border-radius: 14px; padding: 13px 14px; margin: 0 0 14px; font-size: 13.5px; line-height: 1.45; color: var(--sv-text); cursor: pointer; border: 1.5px solid transparent; }
+    .svy-consent .mark { margin-top: 1px; }
+    .svy-mark, .svy .mark { width: 20px; height: 20px; flex: none; border: 1.5px solid var(--sv-line); border-radius: 6px; position: relative; box-sizing: border-box; }
+    .svy .mark.round { border-radius: 50%; }
+    .svy .on > .mark, .svy .mark.on { background: var(--sv-accent); border-color: var(--sv-accent); }
+    .svy .on > .mark::after, .svy .mark.on::after { content: ''; position: absolute; left: 6px; top: 2.5px; width: 5px; height: 10px; border: solid var(--sv-btn); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    .svy .on > .mark.round::after { left: 5px; top: 5px; width: 6px; height: 6px; border: 0; border-radius: 50%; background: var(--sv-btn); transform: none; }
+    .svy-top { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; }
+    .svy-progress { flex: 1; height: 4px; border-radius: 4px; background: var(--sv-dim); overflow: hidden; }
+    .svy-progress i { display: block; height: 100%; background: var(--sv-accent); border-radius: 4px; transition: width .3s; }
+    .svy-step { font-size: 12px; color: var(--sv-text2); flex: none; }
+    .svy-page-t { font-family: 'Jost', sans-serif; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sv-accent); margin: 0 0 14px; }
+    .svy-q { margin: 0 0 24px; }
+    .svy-q[hidden] { display: none; }
+    .svy-qt { font-size: 17px; line-height: 1.38; font-weight: 500; color: var(--sv-text); overflow-wrap: anywhere; }
+    .svy-qt .rq { color: var(--sv-accent); margin-left: 4px; }
+    .svy-qh { font-size: 13px; line-height: 1.45; color: var(--sv-text2); margin-top: 5px; white-space: pre-line; }
+    .svy-opt { display: flex; gap: 13px; align-items: center; width: 100%; text-align: left; background: var(--sv-field-a); border: 1.5px solid transparent; color: var(--sv-text); border-radius: 14px; padding: 13px 14px; margin-top: 9px; font: 400 15px/1.35 'Inter', sans-serif; cursor: pointer; box-sizing: border-box; }
+    .svy-opt.on { border-color: var(--sv-accent); }
+    .svy-other { width: 100%; box-sizing: border-box; margin-top: 8px; background: var(--sv-field-a); color: var(--sv-text); border: 1.5px solid var(--sv-line); border-radius: 12px; padding: 12px 14px; font: 400 15px 'Inter', sans-serif; }
+    .svy-nps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+    .svy-nps button { height: 48px; border-radius: 12px; border: 1.5px solid transparent; background: var(--sv-field-a); color: var(--sv-text); font: 500 17px 'Jost', sans-serif; cursor: pointer; }
+    .svy-nps button.on { background: var(--sv-accent); color: var(--sv-btn); }
+    .svy-stars { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
+    .svy-stars button { background: none; border: 0; padding: 4px; cursor: pointer; line-height: 0; color: var(--sv-line); }
+    .svy-stars button.on { color: var(--sv-accent); }
+    .svy-stars svg { width: 40px; height: 40px; }
+    .svy-ta { width: 100%; min-height: 120px; box-sizing: border-box; margin-top: 10px; background: var(--sv-field-a); color: var(--sv-text); border: 1.5px solid transparent; border-radius: 14px; padding: 13px 14px; font: 400 15px/1.45 'Inter', sans-serif; resize: vertical; }
+    .svy-ta:focus, .svy-other:focus { outline: none; border-color: var(--sv-accent); }
+    .svy-cnt { text-align: right; font-size: 11.5px; color: var(--sv-text2); margin-top: 4px; }
+    .svy-err { color: #f2998d; font-size: 13px; margin-top: 8px; line-height: 1.4; }
+    .svy-q.bad .svy-qt { color: #f2998d; }
+    .svy-nav { display: flex; gap: 10px; margin-top: auto; padding-top: 10px; }
+    .svy-nav .svy-btn.ghost { width: auto; flex: none; padding-left: 20px; padding-right: 20px; }
   </style>
 </head>
 <body>
@@ -1625,6 +1679,14 @@
   <div style="height:16px"></div>
 </div>
 
+<!-- ОПРОС ИЗ КОНСТРУКТОРА (скрытый экран — вход по ссылке t.me/<бот>?start=survey_<код>; создаёт и настраивает персонал: раздел «Опросы») -->
+<div class="screen" id="screen-survey">
+  <div class="svy" id="svy">
+    <div class="svy-bg" id="svyBg"></div>
+    <div class="svy-in"><div id="svyBody" aria-live="polite"></div></div>
+  </div>
+</div>
+
 <!-- ЧАЕВЫЕ (скрытый экран — вход по QR: ?tips=1 или t.me/<бот>?start=tips). Включает и настраивает администрация в приложении сотрудников -->
 <div class="screen" id="screen-tips">
   <div class="about-hero tp-hero">
@@ -2112,7 +2174,7 @@
   }
 
   // Navigation
-  const screens = ['home','book','events','event','about','faq','menu','bar','vip','profile','location','review','message','tips'];
+  const screens = ['home','book','events','event','about','faq','menu','bar','vip','profile','location','review','message','tips','survey'];
   // История переходов для кнопки «Назад» Telegram: [{ name, y }] — откуда пришли и где была прокрутка
   const navStack = [];
   let currentScreen = 'home';
@@ -4382,7 +4444,7 @@
     if (currentScreen === 'menu') loadMenu();
     if (currentScreen === 'events') loadEvents();
   });
-  if (new URLSearchParams(window.location.search).get('review') !== '1' && new URLSearchParams(window.location.search).get('tips') !== '1') loadStories(); // фото сторис подтягиваются в фоне, пока гость на главной
+  if (new URLSearchParams(window.location.search).get('review') !== '1' && new URLSearchParams(window.location.search).get('tips') !== '1' && !new URLSearchParams(window.location.search).get('survey')) loadStories(); // фото сторис подтягиваются в фоне, пока гость на главной
   initHeaderAvatar();
   updateBookingDot();
 
@@ -4649,13 +4711,292 @@
     window.openTips = function () { showScreen('tips'); load(); };
   })();
 
+
+  // ─── ОПРОС ИЗ КОНСТРУКТОРА ───────────────────────────────────────────────────────────────
+  // Ссылка: t.me/<бот>?start=survey_<код> → бот открывает приложение с ?survey=<код> (или start_param «survey_<код>»).
+  // Оформление (цвета, логотип, фон), страницы и вопросы приходят с сервера (/api/survey/<код>); ответ уходит одним запросом
+  // в конце. «Показать вопрос, если…» считается здесь же, теми же правилами, что и на сервере (db/surveys.js).
+  // ?preview=1 — предпросмотр черновика из приложения персонала: ответы не отправляются.
+  const SVY = (function () {
+    const HEX = /^#[0-9a-f]{6}$/i;
+    const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
+    const STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.7 5.8 6.3.8-4.6 4.3 1.2 6.3L12 17l-5.6 3 1.2-6.3L3 9.4l6.3-.8z"/></svg>';
+    let cfg = null, slug = '', preview = false, vals = {}, agreed = false, step = 'load', pageId = '', err = '', qerr = {}, sending = false;
+
+    const body = () => document.getElementById('svyBody');
+    const allQ = () => (cfg ? cfg.pages.flatMap(p => p.questions) : []);
+    const qById = (id) => allQ().find(q => q.id === id);
+
+    // Какие вопросы видны при текущих ответах (порядок важен: условие смотрит только на уже видимые вопросы выше)
+    function visibleSet() {
+      const vis = new Set();
+      for (const q of allQ()) {
+        const si = q.showIf;
+        if (!si) { vis.add(q.id); continue; }
+        const v = vals[si.q];
+        if (!vis.has(si.q) || v === undefined || v === null) continue;
+        let ok = false;
+        if (si.op === 'in') ok = !!v.ids && v.ids.some(x => si.values.indexOf(x) >= 0);
+        else if (si.op === 'lte') ok = typeof v === 'number' && v <= si.value;
+        else if (si.op === 'gte') ok = typeof v === 'number' && v >= si.value;
+        else if (si.op === 'answered') ok = true;
+        if (ok) vis.add(q.id);
+      }
+      for (const id of Object.keys(vals)) if (!vis.has(id)) delete vals[id];   // ответ на скрытый вопрос не отправляем
+      return vis;
+    }
+    const pagesNow = () => { const vis = visibleSet(); return cfg.pages.filter(p => p.questions.some(q => vis.has(q.id))); };
+    const isEmpty = (q, v) => {
+      if (v === undefined || v === null) return true;
+      if (q.type === 'choice') return !((v.ids && v.ids.length) || (v.otherOn && String(v.other || '').trim()));
+      if (q.type === 'text') return !String(v).trim();
+      return false;
+    };
+
+    function applyDesign() {
+      const d = (cfg && cfg.design) || {}, c = d.colors || {}, el = document.getElementById('svy');
+      const col = (k, def) => (HEX.test(c[k] || '') ? c[k] : def);
+      const bg = col('bg', '#1e1004'), field = col('field', '#2a160f'), text = col('text', '#f0dfc0');
+      el.style.setProperty('--sv-bg', bg); el.style.setProperty('--sv-field', field); el.style.setProperty('--sv-accent', col('accent', '#b87333'));
+      el.style.setProperty('--sv-text', text); el.style.setProperty('--sv-text2', col('text2', '#a2836a')); el.style.setProperty('--sv-btn', col('btnText', '#1e1004'));
+      el.style.setProperty('--sv-field-a', rgba(field, 0.92)); el.style.setProperty('--sv-line', rgba(text, 0.24)); el.style.setProperty('--sv-dim', rgba(text, 0.14));
+      document.body.style.setProperty('--sv-bg', bg);
+      const bgEl = document.getElementById('svyBg');
+      bgEl.style.backgroundImage = cfg && cfg.background ? 'url("' + String(cfg.background).replace(/"/g, '%22') + '")' : '';
+      bgEl.dataset.tint = cfg && cfg.background && d.tint !== false ? '1' : '0';
+      try { if (tg && tg.setHeaderColor) tg.setHeaderColor(bg); if (tg && tg.setBackgroundColor) tg.setBackgroundColor(bg); } catch (e) {}
+    }
+    const logoHtml = () => (cfg && cfg.logo ? '<div class="svy-logo"><img src="' + escHtml(cfg.logo) + '" alt=""></div>' : '');
+    const bannerHtml = () => (preview ? '<div class="svy-banner">Предпросмотр — ответы не сохраняются</div>' : '');
+
+    function msg(title, text, retry) {
+      step = 'msg';
+      body().innerHTML = logoHtml() + bannerHtml() + '<div class="svy-center"><h2 class="svy-h">' + escHtml(title) + '</h2>' + (text ? '<p class="svy-p">' + escHtml(text) + '</p>' : '') +
+        (retry ? '<button class="svy-btn" type="button" onclick="SVY.retry()">Повторить</button>' : '') + '</div>';
+    }
+    function stateMsg(state, nextAt) {
+      const when = nextAt ? new Date(nextAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
+      if (state === 'done') return msg('Вы уже прошли этот опрос', 'Спасибо, ваши ответы у нас.' + (when ? ' Пройти снова можно с ' + when + '.' : ''));
+      if (state === 'soon') return msg('Опрос ещё не начался', 'Загляните позже — мы скоро откроем.');
+      if (state === 'full') return msg('Опрос завершён', 'Мы уже собрали нужное число ответов — спасибо!');
+      return msg('Опрос завершён', 'Спасибо, что заглянули. Этот опрос больше не принимает ответы.');
+    }
+
+    function renderStart() {
+      step = 'start';
+      const text = (cfg.start && cfg.start.text) || cfg.title || '';
+      body().innerHTML = logoHtml() + bannerHtml() + '<div class="svy-center"><h1 class="svy-h">' + escHtml(text) + '</h1>' +
+        (cfg.anonymous ? '<p class="svy-note">Опрос анонимный: ответы не привязываются к вашему профилю.</p>' : '') +
+        (cfg.consent ? '<div class="svy-consent' + (agreed ? ' on' : '') + '" role="checkbox" aria-checked="' + agreed + '" tabindex="0" onclick="SVY.agree()" onkeydown="if(event.key===\' \'||event.key===\'Enter\'){event.preventDefault();SVY.agree()}"><span class="mark"></span><span>' + escHtml(cfg.consent.text || 'Согласен на обработку данных') + '</span></div>' : '') +
+        '<button class="svy-btn" id="svyStart" type="button" onclick="SVY.start()"' + (cfg.consent && !agreed ? ' disabled' : '') + '>' + escHtml((cfg.start && cfg.start.button) || 'Начать') + '</button></div>';
+    }
+
+    function optHtml(q, o, v) {
+      const on = !!(v && v.ids && v.ids.indexOf(o.id) >= 0);
+      return '<button type="button" class="svy-opt' + (on ? ' on' : '') + '" role="' + (q.multiple ? 'checkbox' : 'radio') + '" aria-checked="' + on + '" onclick="SVY.pick(\'' + escHtml(q.id) + '\',\'' + escHtml(o.id) + '\')"><span class="mark' + (q.multiple ? '' : ' round') + '"></span><span>' + escHtml(o.text) + '</span></button>';
+    }
+    function choiceHtml(q) {
+      const v = vals[q.id] || {};
+      let h = q.options.map(o => optHtml(q, o, v)).join('');
+      if (q.other) {
+        h += '<button type="button" class="svy-opt' + (v.otherOn ? ' on' : '') + '" role="' + (q.multiple ? 'checkbox' : 'radio') + '" aria-checked="' + !!v.otherOn + '" onclick="SVY.pickOther(\'' + escHtml(q.id) + '\')"><span class="mark' + (q.multiple ? '' : ' round') + '"></span><span>' + escHtml(q.otherLabel || 'Другое') + '</span></button>';
+        if (v.otherOn) h += '<input class="svy-other" id="svyOther_' + escHtml(q.id) + '" maxlength="200" placeholder="Напишите свой вариант" value="' + escHtml(v.other || '') + '" oninput="SVY.other(\'' + escHtml(q.id) + '\',this.value)">';
+      }
+      return h;
+    }
+    function inputHtml(q) {
+      const v = vals[q.id];
+      if (q.type === 'choice') return '<div class="svy-opts" role="' + (q.multiple ? 'group' : 'radiogroup') + '">' + choiceHtml(q) + '</div>';
+      if (q.type === 'nps') {
+        let h = '<div class="svy-nps" role="radiogroup">';
+        for (let i = 1; i <= 10; i++) h += '<button type="button" role="radio" aria-checked="' + (v === i) + '" class="' + (v === i ? 'on' : '') + '" onclick="SVY.num(\'' + escHtml(q.id) + '\',' + i + ')">' + i + '</button>';
+        return h + '</div>';
+      }
+      if (q.type === 'rating') {
+        let h = '<div class="svy-stars" role="radiogroup">';
+        for (let i = 1; i <= 5; i++) h += '<button type="button" role="radio" aria-label="' + i + ' из 5" aria-checked="' + (v === i) + '" class="' + (typeof v === 'number' && i <= v ? 'on' : '') + '" onclick="SVY.num(\'' + escHtml(q.id) + '\',' + i + ')">' + STAR + '</button>';
+        return h + '</div>';
+      }
+      return '<textarea class="svy-ta" maxlength="1000" placeholder="Ваш ответ" oninput="SVY.text(\'' + escHtml(q.id) + '\',this.value)">' + escHtml(v || '') + '</textarea><div class="svy-cnt" id="svyCnt_' + escHtml(q.id) + '">' + String(v || '').length + '/1000</div>';
+    }
+    function qHtml(q, vis) {
+      return '<div class="svy-q' + (qerr[q.id] ? ' bad' : '') + '" data-q="' + escHtml(q.id) + '"' + (vis.has(q.id) ? '' : ' hidden') + '>' +
+        '<div class="svy-qt">' + escHtml(q.title) + (q.required ? '<span class="rq" aria-hidden="true">*</span>' : '') + '</div>' +
+        (q.hint ? '<div class="svy-qh">' + escHtml(q.hint) + '</div>' : '') +
+        '<div class="svy-qin">' + inputHtml(q) + '</div><div class="svy-err" data-err="' + escHtml(q.id) + '"' + (qerr[q.id] ? '' : ' hidden') + '>' + escHtml(qerr[q.id] || '') + '</div></div>';
+    }
+    function renderPage() {
+      step = 'page';
+      const pages = pagesNow();
+      let idx = pages.findIndex(p => p.id === pageId);
+      if (idx < 0) { idx = 0; pageId = pages[0] ? pages[0].id : ''; }
+      const page = pages[idx];
+      if (!page) return renderThanks();                 // все вопросы скрыты условиями — спрашивать нечего
+      const vis = visibleSet(), last = idx === pages.length - 1;
+      body().innerHTML = logoHtml() + bannerHtml() +
+        '<div class="svy-top"><div class="svy-progress"><i id="svyBar" style="width:' + Math.round(((idx + 1) / pages.length) * 100) + '%"></i></div><span class="svy-step" id="svyStep">' + (idx + 1) + ' из ' + pages.length + '</span></div>' +
+        (page.title ? '<div class="svy-page-t">' + escHtml(page.title) + '</div>' : '') +
+        '<div id="svyQs">' + page.questions.map(q => qHtml(q, vis)).join('') + '</div>' +
+        '<div class="svy-err" id="svyErr"' + (err ? '' : ' hidden') + '>' + escHtml(err) + '</div>' +
+        '<div class="svy-nav">' + (idx > 0 ? '<button class="svy-btn ghost" type="button" onclick="SVY.back()">Назад</button>' : '') +
+        '<button class="svy-btn" id="svyNext" type="button" onclick="SVY.next()"' + (sending ? ' disabled' : '') + '>' + (sending ? 'Отправляем…' : last ? 'Отправить' : 'Далее') + '</button></div>';
+    }
+    function renderThanks() {
+      step = 'thanks';
+      const t = cfg.thanks || {};
+      body().innerHTML = logoHtml() + bannerHtml() + '<div class="svy-center"><h1 class="svy-h">' + escHtml(t.title || 'Спасибо!') + '</h1><p class="svy-p">' + escHtml(t.text || 'Ваши ответы получены — они помогают нам становиться лучше.') + '</p></div>';
+      window.scrollTo(0, 0);
+    }
+
+    // Ответ изменился: пересчитать, какие вопросы видны, и показать/спрятать их на месте (поля при этом не перерисовываем — курсор не теряется)
+    function changed() {
+      const vis = visibleSet();
+      const root = body();
+      root.querySelectorAll('[data-q]').forEach(el => { el.hidden = !vis.has(el.dataset.q); });
+      const pages = pagesNow(), idx = Math.max(0, pages.findIndex(p => p.id === pageId));
+      const bar = document.getElementById('svyBar'), st = document.getElementById('svyStep'), nx = document.getElementById('svyNext');
+      if (bar) bar.style.width = Math.round(((idx + 1) / Math.max(1, pages.length)) * 100) + '%';
+      if (st) st.textContent = (idx + 1) + ' из ' + Math.max(1, pages.length);
+      if (nx && !sending) nx.textContent = idx === pages.length - 1 ? 'Отправить' : 'Далее';
+    }
+    function redrawQuestion(qid) {
+      const q = qById(qid), el = body().querySelector('[data-q="' + qid + '"] .svy-qin');
+      if (q && el) el.innerHTML = inputHtml(q);
+      clearErr(qid);
+    }
+    function clearErr(qid) {
+      if (!qerr[qid] && !err) return;
+      delete qerr[qid]; err = '';
+      const e = body().querySelector('[data-err="' + qid + '"]'); if (e) e.hidden = true;
+      const w = body().querySelector('[data-q="' + qid + '"]'); if (w) w.classList.remove('bad');
+      const ge = document.getElementById('svyErr'); if (ge) ge.hidden = true;
+    }
+
+    function validatePage() {
+      const pages = pagesNow(), page = pages.find(p => p.id === pageId);
+      if (!page) return true;
+      const vis = visibleSet(); qerr = {}; let first = '';
+      for (const q of page.questions) {
+        if (!vis.has(q.id) || !q.required) continue;
+        if (isEmpty(q, vals[q.id])) {
+          qerr[q.id] = q.type === 'choice' ? 'Выберите вариант ответа' : q.type === 'text' ? 'Напишите ответ' : 'Поставьте оценку';
+          if (!first) first = q.id;
+        }
+      }
+      if (first) {
+        renderPage();
+        const el = body().querySelector('[data-q="' + first + '"]');
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return false;
+      }
+      return true;
+    }
+    function collect() {
+      const vis = visibleSet(), out = {};
+      for (const q of allQ()) {
+        if (!vis.has(q.id) || isEmpty(q, vals[q.id])) continue;
+        const v = vals[q.id];
+        out[q.id] = q.type === 'choice' ? { ids: v.ids || [], other: v.otherOn ? String(v.other || '').trim() : '' } : v;
+      }
+      return out;
+    }
+
+    async function send() {
+      if (preview) return renderThanks();
+      sending = true; err = ''; renderPage();
+      try {
+        const res = await apiFetch('/api/survey/' + encodeURIComponent(slug) + '/answer', { method: 'POST', body: JSON.stringify({ answers: collect(), consent: agreed }), timeout: 20000 });
+        let j = {}; try { j = await res.json(); } catch (e) {}
+        sending = false;
+        if (res.ok) return renderThanks();
+        const code = j.code || '';
+        if (code === 'done') return stateMsg('done');
+        if (['closed', 'ended', 'full', 'soon'].indexOf(code) >= 0) return stateMsg(code);
+        if (code === 'telegram_required') return msg('Откройте опрос в Telegram', 'Опрос работает только внутри Telegram: откройте ссылку на него из бота.');
+        err = res.status === 429 ? 'Слишком часто — попробуйте через несколько минут.' : (j.error || 'Не получилось отправить ответы. Попробуйте ещё раз.');
+        renderPage();
+      } catch (e) {
+        sending = false; err = 'Нет связи с сервером. Проверьте интернет и нажмите «Отправить» ещё раз — ваши ответы сохранены.';
+        renderPage();
+      }
+    }
+
+    async function load() {
+      step = 'load'; body().innerHTML = '<div class="svy-center"><p class="svy-p">Загружаем…</p></div>';
+      try {
+        const res = await apiFetch('/api/survey/' + encodeURIComponent(slug) + (preview ? '?preview=1' : ''), { timeout: 15000 });
+        if (res.status === 404) { cfg = null; applyDesign(); return msg('Опрос не найден', 'Ссылка устарела или опрос удалён.'); }
+        if (!res.ok) throw new Error('http ' + res.status);
+        cfg = await res.json();
+        applyDesign();
+        if (!preview && !hasTelegramAuth()) return msg('Откройте опрос в Telegram', 'Опрос работает только внутри Telegram: откройте ссылку на него из бота.');
+        if (['open', 'preview'].indexOf(cfg.state) < 0) return stateMsg(cfg.state, cfg.nextAt);
+        if (!cfg.pages.length) return msg('Опрос пока пуст', 'В нём ещё нет вопросов.');
+        vals = {}; agreed = false; qerr = {}; err = ''; pageId = cfg.pages[0].id;
+        renderStart();
+      } catch (e) {
+        msg('Не получилось открыть опрос', 'Проверьте интернет и попробуйте ещё раз.', true);
+      }
+    }
+
+    return {
+      open(s, pv) { slug = s; preview = !!pv; showScreen('survey'); document.body.classList.add('svy-mode'); return load(); },
+      retry() { return load(); },
+      agree() { agreed = !agreed; renderStart(); },
+      start() { if (cfg.consent && !agreed) return; pageId = pagesNow()[0] ? pagesNow()[0].id : ''; err = ''; renderPage(); window.scrollTo(0, 0); },
+      pick(qid, oid) {
+        const q = qById(qid); if (!q) return;
+        const v = vals[qid] || (vals[qid] = { ids: [], other: '', otherOn: false });
+        const at = v.ids.indexOf(oid);
+        if (q.multiple) { if (at >= 0) v.ids.splice(at, 1); else v.ids.push(oid); }
+        else { v.ids = at >= 0 ? [] : [oid]; v.otherOn = false; }
+        redrawQuestion(qid); changed();
+      },
+      pickOther(qid) {
+        const q = qById(qid); if (!q) return;
+        const v = vals[qid] || (vals[qid] = { ids: [], other: '', otherOn: false });
+        v.otherOn = !v.otherOn;
+        if (v.otherOn && !q.multiple) v.ids = [];
+        redrawQuestion(qid); changed();
+        if (v.otherOn) { const inp = document.getElementById('svyOther_' + qid); if (inp) inp.focus(); }
+      },
+      other(qid, text) { const v = vals[qid]; if (v) { v.other = text; clearErr(qid); changed(); } },
+      num(qid, n) { vals[qid] = vals[qid] === n && !(qById(qid) || {}).required ? undefined : n; if (vals[qid] === undefined) delete vals[qid]; redrawQuestion(qid); changed(); },
+      text(qid, t) {
+        if (t.trim()) vals[qid] = t; else delete vals[qid];
+        const c = document.getElementById('svyCnt_' + qid); if (c) c.textContent = t.length + '/1000';
+        clearErr(qid); changed();
+      },
+      back() {
+        const pages = pagesNow(), idx = pages.findIndex(p => p.id === pageId);
+        if (idx > 0) { pageId = pages[idx - 1].id; err = ''; qerr = {}; renderPage(); window.scrollTo(0, 0); }
+      },
+      next() {
+        if (sending || !validatePage()) return;
+        const pages = pagesNow(), idx = pages.findIndex(p => p.id === pageId);
+        if (idx >= 0 && idx < pages.length - 1) { pageId = pages[idx + 1].id; err = ''; renderPage(); window.scrollTo(0, 0); }
+        else send();
+      }
+    };
+  })();
+
   // Скрытый вход в отзыв: ?review=1 в ссылке (только с QR-кода на столе, не из обычной навигации).
   // Если ссылку открывают через Telegram-механизм startapp (не обычный URL) — параметр
   // приходит не в window.location.search, а в initDataUnsafe.start_param, проверяем оба варианта.
   const urlWantsReview = new URLSearchParams(window.location.search).get('review') === '1';
   const tgStartParam = tg?.initDataUnsafe?.start_param || '';
   const tgWantsReview = tgStartParam === 'review' || tgStartParam === 'review1' || tgStartParam.includes('review');
-  if (urlWantsReview || tgWantsReview) {
+  // Опрос из конструктора: ?survey=<код> (его кладёт бот в кнопку «Пройти опрос») или start_param «survey_<код>»; &preview=1 — предпросмотр черновика
+  const svySearch = new URLSearchParams(window.location.search);
+  const svyFromUrl = /^[a-z0-9]{4,16}$/.test(svySearch.get('survey') || '') ? svySearch.get('survey') : '';
+  const svyFromTg = (/^survey_([a-z0-9]{4,16})$/.exec(tgStartParam) || [])[1] || '';
+  const svySlug = svyFromUrl || svyFromTg;
+  if (svySlug) {
+    reviewOnlyMode = true;
+    document.body.classList.add('svy-mode');
+    ['.bottom-nav', '.header', '.app-top'].forEach(sel => { const el = document.querySelector(sel); if (el) el.style.display = 'none'; });
+    SVY.open(svySlug, svySearch.get('preview') === '1');
+  } else if (urlWantsReview || tgWantsReview) {
     reviewOnlyMode = true;
     document.body.classList.add('rv-pending'); // на время загрузки оформления — пустой экран, без мелькания стандартного фона
     setTimeout(() => document.body.classList.remove('rv-pending'), 2500);
