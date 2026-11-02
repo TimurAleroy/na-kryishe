@@ -49,9 +49,9 @@
          сайт заметно теплее и светлее (#1E1004). --bg-card-hover пересчитан
          пропорционально (тот же шаг +10/+4/+5 от bg-card, что был раньше),
          чтобы карточки не потерялись на новом, более светлом фоне.
-         02.11.2026: фон — чёрный (#0A0A0A), плитки и карточки остались прежними коричневыми (--bg-card).
-         Вернуть прежний вид: --bg: #1E1004, шапка rgba(30,16,4,…), цвет Telegram #1E1004. */
-      --bg: #0A0A0A;
+         02.11.2026 (проба): фон — почти чёрный с тёплым коричневым оттенком (#100906), плитки и карточки остались прежними
+         коричневыми (--bg-card). Вернуть прежний вид: --bg: #1E1004, шапка rgba(30,16,4,…), цвет Telegram #1E1004. */
+      --bg: #100906;
       --bg-card: #20120A;
       --bg-card-hover: #2A160F;
       --accent: #B87333;
@@ -135,7 +135,7 @@
     .app-top {
       position: sticky; top: 0; z-index: 150;
       padding: 16px 16px 12px;
-      background: rgba(10,10,10,0.88);
+      background: rgba(16,9,6,0.88);
       -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
     }
     .header {
@@ -458,7 +458,7 @@
     .evd-snap.gone { opacity: 0; }
     /* Афиша и экран мероприятия: под шапкой и нижним меню едет играющее видео. Размытие под ним iPhone пересчитывает
        на каждом кадре прокрутки, поэтому здесь панели просто чуть плотнее и без размытия. */
-    html[data-screen="events"] .app-top, html[data-screen="event"] .app-top { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(10,10,10,0.96); }
+    html[data-screen="events"] .app-top, html[data-screen="event"] .app-top { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(16,9,6,0.96); }
     html[data-screen="events"] .bottom-nav, html[data-screen="event"] .bottom-nav { -webkit-backdrop-filter: none; backdrop-filter: none; background-image: linear-gradient(rgba(36,16,5,0.94), rgba(36,16,5,0.94)), var(--rim); }
     .evd-sec { font-family: 'Jost', sans-serif; font-weight: 400; font-size: 21px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text); margin: 28px 0 14px; }
     .evd-facts { display: flex; flex-wrap: wrap; gap: 14px 32px; padding-top: 14px; border-top: 1px solid var(--border); margin-bottom: 18px; }
@@ -1760,8 +1760,8 @@
 
 <script>
   const tg = window.Telegram?.WebApp;
-  // Цвет шапки/фона Telegram = фон приложения (#0A0A0A), иначе шапка выделяется полосой.
-  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0A0A0A'); tg.setBackgroundColor('#0A0A0A'); }
+  // Цвет шапки/фона Telegram = фон приложения (#100906), иначе шапка выделяется полосой.
+  if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#100906'); tg.setBackgroundColor('#100906'); }
 
   // ─── Безопасный вывод текста ─────────────────────
   // Всё, что пришло с сервера или от гостя, вставляем в разметку только через
