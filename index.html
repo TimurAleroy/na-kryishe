@@ -49,7 +49,7 @@
          сайт заметно теплее и светлее (#1E1004). --bg-card-hover пересчитан
          пропорционально (тот же шаг +10/+4/+5 от bg-card, что был раньше),
          чтобы карточки не потерялись на новом, более светлом фоне.
-         02.11.2026 (проба): фон — почти чёрный с тёплым коричневым оттенком (#100906), плитки и карточки остались прежними
+         02.11.2026: фон — почти чёрный с тёплым коричневым оттенком (#100906), плитки и карточки остались прежними
          коричневыми (--bg-card). Вернуть прежний вид: --bg: #1E1004, шапка rgba(30,16,4,…), цвет Telegram #1E1004. */
       --bg: #100906;
       --bg-card: #20120A;
@@ -874,6 +874,11 @@
     .stories-slides { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .story-slide.zooming { will-change: transform; z-index: 3; }
     .story-slide.zoom-back { transition: transform .22s ease-out; }
+    /* Свайп вниз закрывает сторис (как в Инстаграме): окно едет за пальцем, чуть уменьшается, углы скругляются.
+       Отпустили низко или резким движением — уезжает вниз и закрывается; не дотянули — возвращается на место. */
+    .stories-viewer.sv-drag { overflow: hidden; will-change: transform; transform-origin: 50% 35%; }
+    .stories-viewer.sv-back { transition: transform .24s cubic-bezier(.2,.8,.3,1), border-radius .24s ease-out; }
+    .stories-viewer.sv-out { transition: transform .2s ease-in, border-radius .2s ease-in; }
     .stories-progress, .stories-label, .stories-close, .stories-book { transition: opacity .18s ease; }
     .stories-viewer.holding .stories-progress, .stories-viewer.holding .stories-label,
     .stories-viewer.holding .stories-close, .stories-viewer.holding .stories-book { opacity: 0; pointer-events: none; }
@@ -3232,10 +3237,12 @@
 
   // Stories logic
   const storiesState = { bar: { cur: 0, timer: null, paused: false, remaining: 5000, startedAt: 0 }, vip: { cur: 0, timer: null, paused: false, remaining: 5000, startedAt: 0 } };
-  // Жесты: тап по половинам — вперёд/назад, свайп в сторону — вперёд/назад,
+  // Жесты: тап по половинам — вперёд/назад, свайп в сторону — вперёд/назад, свайп вниз — закрыть сторис,
   // удержание пальца — пауза (полоски и кнопки прячутся), два пальца — приближение и сдвиг фото.
   // Отпустили — фото плавно возвращается, сторис идёт дальше с того места, где остановилась.
   const STORY_HOLD_MS = 180, STORY_ZOOM_MAX = 4;
+  const STORY_CLOSE_PX = 110;      // оттянули вниз дальше этого — закрываем
+  const STORY_FLICK_PX = 40, STORY_FLICK_V = 0.4;   // или бросок: от 40 px со скоростью от 0,4 px/мс (400 px в секунду)
   let lastStoryTouchAt = 0;
   const storyGesture = {};
 
@@ -3272,13 +3279,77 @@
   const touchDist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   const touchMid = t => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
 
+  // ── Свайп вниз: окно сторис едет за пальцем и закрывается ──
+  const storyReduceMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+  function storyDragReset(id) {
+    const v = document.getElementById(id + 'Stories');
+    v.classList.remove('sv-drag', 'sv-back', 'sv-out');
+    v.style.transform = ''; v.style.borderRadius = '';
+    if (currentScreen !== 'home') document.getElementById('screen-home').classList.remove('active');   // главная под окном нужна только на время жеста
+  }
+  function storyDragStart(id, g, y) {
+    const v = document.getElementById(id + 'Stories');
+    g.drag = true; g.dy = 0;
+    g.pts = [{ y: g.y0, t: g.p0 }, { y, t: performance.now() }];   // точки пути: по ним считаем скорость броска
+    g.seq = (g.seq || 0) + 1;
+    storyPause(id);                       // пока тянем, время сторис стоит
+    v.classList.remove('holding', 'sv-back', 'sv-out');   // полоски и кнопки едут вместе с окном, не прячутся
+    v.classList.add('sv-drag');
+    document.getElementById('screen-home').classList.add('active');   // под окном видна главная — туда и вернёмся (как лента под сторис в Инстаграме)
+  }
+  function storyDragMove(id, g, dy, y) {
+    g.pts.push({ y, t: performance.now() });
+    if (g.pts.length > 12) g.pts.shift();
+    g.dy = Math.max(0, dy);               // вверх не тянется
+    const k = Math.min(g.dy / 420, 1);
+    const v = document.getElementById(id + 'Stories');
+    v.style.transform = 'translate3d(0,' + g.dy + 'px,0) scale(' + (1 - 0.1 * k) + ')';
+    v.style.borderRadius = (26 * k) + 'px';
+  }
+  // Скорость пальца вниз (px/мс) за последние ~100 мс до отпускания. Палец успел остановиться — броска нет.
+  function storyDragSpeed(g, y) {
+    const now = performance.now();
+    if (y !== undefined) g.pts.push({ y, t: now });
+    const last = g.pts[g.pts.length - 1];
+    if (now - last.t > 120 || g.pts.length < 2) return 0;
+    let from = g.pts[g.pts.length - 2];
+    for (const p of g.pts) { if (last.t - p.t <= 100 && p !== last) { from = p; break; } }
+    return (last.y - from.y) / Math.max(last.t - from.t, 1);
+  }
+  function storyDragEnd(id, g, dy, y) {
+    g.drag = false;
+    const v = document.getElementById(id + 'Stories');
+    const d = Math.max(0, dy);
+    const vy = y === undefined ? 0 : storyDragSpeed(g, y);
+    const seq = g.seq;
+    if (d > STORY_CLOSE_PX || (d > STORY_FLICK_PX && vy > STORY_FLICK_V)) {
+      const finish = () => { if (g.seq === seq && currentScreen === id) showScreen('home'); storyDragReset(id); g.closing = false; };
+      if (storyReduceMotion()) { finish(); return; }
+      g.closing = true;
+      v.classList.add('sv-out');
+      v.style.transform = 'translate3d(0,' + window.innerHeight + 'px,0) scale(0.9)';
+      v.style.borderRadius = '26px';
+      setTimeout(finish, 210);
+      return;
+    }
+    // не дотянули: возвращаем на место, сторис идёт дальше с того же места
+    v.classList.add('sv-back');
+    v.style.transform = 'translate3d(0,0,0) scale(1)'; v.style.borderRadius = '0px';
+    setTimeout(() => { if (g.seq === seq && !g.drag) storyDragReset(id); }, 250);
+    storyResume(id);
+  }
+
   function storyTouchStart(e, id) {
     lastStoryTouchAt = Date.now();
     const g = storyGesture[id] = storyGesture[id] || {};
+    if (g.closing) { e.preventDefault(); return; }    // окно уже уезжает вниз
+    if (document.getElementById(id + 'Stories').classList.contains('sv-drag')) { g.seq = (g.seq || 0) + 1; storyDragReset(id); }   // новое касание во время возврата на место
+    g.drag = false;
     const t = e.touches;
     if (t.length >= 2) {
       // второй палец: переходим из «удержания» в приближение
       clearTimeout(g.holdTimer);
+      if (g.drag) { g.drag = false; g.seq = (g.seq || 0) + 1; storyDragReset(id); }   // шли вниз, добавился второй палец — окно на место
       g.mode = 'pinch';
       g.d0 = Math.max(touchDist(t), 1);
       g.m0 = touchMid(t);
@@ -3294,7 +3365,7 @@
       return;
     }
     g.mode = 'single';
-    g.x0 = t[0].clientX; g.y0 = t[0].clientY; g.t0 = Date.now(); g.moved = false;
+    g.x0 = t[0].clientX; g.y0 = t[0].clientY; g.t0 = Date.now(); g.p0 = performance.now(); g.moved = false;
     clearTimeout(g.holdTimer);
     g.holdTimer = setTimeout(() => { if (g.mode === 'single' && !g.moved) { g.held = true; storyPause(id); } }, STORY_HOLD_MS);
     g.held = false;
@@ -3313,7 +3384,13 @@
       return;
     }
     if (g.mode === 'single' && t.length === 1) {
-      if (Math.hypot(t[0].clientX - g.x0, t[0].clientY - g.y0) > 10) { g.moved = true; clearTimeout(g.holdTimer); }
+      const dx = t[0].clientX - g.x0, dy = t[0].clientY - g.y0;
+      if (!g.moved && Math.hypot(dx, dy) > 10) {
+        g.moved = true; clearTimeout(g.holdTimer);
+        // направление выбираем один раз: заметно вниз — закрываем, иначе это боковой свайп
+        if (dy > 0 && dy > Math.abs(dx) * 1.2) storyDragStart(id, g, t[0].clientY);
+      }
+      if (g.drag) storyDragMove(id, g, dy, t[0].clientY);
     }
   }
   function storyTouchEnd(e, id) {
@@ -3332,6 +3409,7 @@
     g.mode = null;
     const t = e.changedTouches[0];
     const dx = t.clientX - g.x0, dy = t.clientY - g.y0;
+    if (g.drag) { storyDragEnd(id, g, dy, t.clientY); e.preventDefault(); return; }
     const wasHeld = storiesState[id].paused;
     if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
       // свайп: листаем (showStory сам запустит таймер заново)
@@ -3350,6 +3428,7 @@
     const g = storyGesture[id];
     if (g) { clearTimeout(g.holdTimer); g.mode = null; }
     storyZoomReset(id, false);
+    if (g && g.drag) { storyDragEnd(id, g, 0); return; }   // касание прервала система — окно возвращается на место
     storyResume(id);
   }
   function storyClick(e, id) {
