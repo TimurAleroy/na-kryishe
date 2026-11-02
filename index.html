@@ -156,7 +156,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: transparent;
+      background: var(--bg-card); /* #20120A — явно, а не «прозрачный поверх шапки» */
       border: 1px solid rgba(184,115,51,0.3);
     }
     .logo img { width: 55%; height: 55%; object-fit: contain; }
@@ -1201,7 +1201,7 @@
   <div class="header-circles" style="display:flex;gap:20px;margin-bottom:18px;">
     <div onclick="showScreen('vip')" style="display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;">
       <div style="width:72px;height:72px;border-radius:50%;border:1px solid transparent;overflow:hidden;display:flex;align-items:center;justify-content:center;background-image:linear-gradient(var(--bg-card),var(--bg-card)),var(--rim);background-origin:border-box;background-clip:padding-box, border-box;" id="circleVip">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-sub)" stroke-width="1.2"><line x1="12" y1="2" x2="12" y2="11"/><polygon points="12 11 17.5 20 6.5 20"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-sub)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C12.6 8.4 15.6 11.4 21 12C15.6 12.6 12.6 15.6 12 21C11.4 15.6 8.4 12.6 3 12C8.4 11.4 11.4 8.4 12 3Z"/></svg>
       </div>
       <span style="font-size: 11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);">ВИП</span>
     </div>
@@ -1593,7 +1593,7 @@
 <!-- ABOUT -->
 <div class="screen" id="screen-about">
   <h1 class="about-slogan">Добро пожаловать домой</h1>
-  <div class="about-hero" style="background:var(--bg);border-color:var(--border);">
+  <div class="about-hero" style="background:var(--bg-card);border-color:var(--border);">
     <img src="assets/about-hero.png" width="68" height="140" loading="lazy" decoding="async" alt="На Крыше" style="max-height:140px;margin:0 auto 16px;display:block;">
     <p>Для нас нет ничего важнее счастья гостя<br>Каждая деталь — ради вашего вечера</p>
   </div>
@@ -2526,7 +2526,7 @@
     prefillBookingForm();
     const banner = document.getElementById('bookingContextBanner');
     if (banner) {
-      banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2" style="flex-shrink:0"><line x1="12" y1="2" x2="12" y2="11"/><polygon points="12 11 17.5 20 6.5 20"/></svg><span>Бронируете: ${evEsc(bookingContext.room)}</span></span>`;
+      banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 3C12.6 8.4 15.6 11.4 21 12C15.6 12.6 12.6 15.6 12 21C11.4 15.6 8.4 12.6 3 12C8.4 11.4 11.4 8.4 12 3Z"/></svg><span>Бронируете: ${evEsc(bookingContext.room)}</span></span>`;
       banner.style.display = 'block';
     }
   }
