@@ -431,6 +431,14 @@
     .ev-ph .d { font-family: 'Jost', sans-serif; font-size: 84px; line-height: 1; color: var(--text); }
     .ev-ph .m { font-size: 12px; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); }
     .ev-ph .f { margin-top: 14px; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text-muted); }
+    /* Пока видео (или фото) афиши не показало первый кадр, число и месяц не мелькают: на месте картинки ровная тёмная подложка,
+       видео проявляется плавно. Если не загрузилось — класс ev-ph-w снимается, и заглушка с датой возвращается. */
+    .ev-ph-w { opacity: 0; }
+    video.ev-vid { opacity: 0; transition: opacity .3s ease; }
+    video.ev-vid.rdy { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) { video.ev-vid { transition: none; } }
+    /* Запасной кадр под видео в карточке афиши: телефон сбрасывает картинку видео, пока экран скрыт; на возврате виден этот кадр */
+    .ev-cv { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
     .ev-body { padding: 18px 18px 20px; }
     .ev-pill {
       display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 14px; border-radius: 999px;
@@ -456,6 +464,7 @@
     .evd-poster.vid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .evd-snap { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; pointer-events: none; }
     .evd-snap.gone { opacity: 0; }
+    div.evd-snap { background: #140a03; }
     /* Афиша и экран мероприятия: под шапкой и нижним меню едет играющее видео. Размытие под ним iPhone пересчитывает
        на каждом кадре прокрутки, поэтому здесь панели просто чуть плотнее и без размытия. */
     html[data-screen="events"] .app-top, html[data-screen="event"] .app-top { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(16,9,6,0.96); }
@@ -3042,9 +3051,9 @@
     };
   }
   // Заглушка с числом и месяцем (когда постера нет или он не загрузился)
-  function evPlaceholderHTML(e) {
+  function evPlaceholderHTML(e, waiting) {
     const p = evParts(e.date);
-    return `<div class="ev-ph"><div class="d">${p.day}</div><div class="m">${evEsc(p.monShort)}</div>${e.format ? `<div class="f">${evEsc(e.format)}</div>` : ''}</div>`;
+    return `<div class="ev-ph${waiting ? ' ev-ph-w' : ''}"><div class="d">${p.day}</div><div class="m">${evEsc(p.monShort)}</div>${e.format ? `<div class="f">${evEsc(e.format)}</div>` : ''}</div>`;
   }
   // Вместо фото может быть короткое видео: без звука, по кругу. Играет только то, что видно на экране, и не больше одного сразу
   // (два-три видео одновременно на телефоне — это и просадки прокрутки, и нагрев).
@@ -3056,13 +3065,52 @@
     return `<img src="${evEsc(e.poster)}" alt="${evEsc(e.name)}"${lazy ? ' loading="lazy"' : ''} onerror="this.remove()">`;
   }
   function evPosterHTML(e, deferred) {
-    return evPlaceholderHTML(e) + evMediaHTML(e, true, deferred);
+    // есть постер — дату не показываем, пока он грузится (маленькие превью «Других событий» оставляем с датой: видео в них приходит позже)
+    return evPlaceholderHTML(e, !!e.poster && !deferred) + evMediaHTML(e, true, deferred);
   }
   // Размер кадра видео по адресу — известен, как только карточка загрузила начало видео
   const evVidDims = {};
   document.addEventListener('loadedmetadata', ev => {
     const v = ev.target;
     if (v && v.classList && v.classList.contains('ev-vid') && v.videoWidth) evVidDims[(v.currentSrc || v.src || '').split('#')[0]] = { w: v.videoWidth, h: v.videoHeight };
+  }, true);
+  // Первый кадр пришёл — видео проявляется. Кадр запоминаем: телефон сбрасывает картинку видео, когда экран афиши скрыт,
+  // и без запасного кадра на возврате на миг виднелось бы то, что лежит под видео.
+  const evCoverBy = {};     // адрес видео → последний кадр (переживает перерисовку списка)
+  const evSrcKey = v => (v.currentSrc || v.src || '').split('#')[0];
+  function evCoverEl(v, w, h) {
+    let c = v._cv;
+    if (!c) { c = v._cv = document.createElement('canvas'); c.className = 'ev-cv'; v.parentNode.insertBefore(c, v); }   // под видео
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    return c;
+  }
+  function evVidSnap(v, force) {
+    if (!v.closest('.ev-poster') || !v.videoWidth || v.readyState < 2) return;
+    const now = performance.now();
+    if (!force && now - (v._snapAt || 0) < 900) return;
+    v._snapAt = now;
+    const k = Math.min(1, 480 / v.videoWidth), w = Math.max(1, Math.round(v.videoWidth * k)), h = Math.max(1, Math.round(v.videoHeight * k));
+    try {
+      const c = evCoverEl(v, w, h);
+      c.getContext('2d').drawImage(v, 0, 0, w, h);
+      evCoverBy[evSrcKey(v)] = c;
+    } catch {}
+  }
+  function evVidReady(v) { v.classList.add('rdy'); evVidSnap(v, true); }
+  ['loadeddata', 'canplay', 'playing', 'seeked'].forEach(t => document.addEventListener(t, ev => {
+    const v = ev.target;
+    if (v && v.classList && v.classList.contains('ev-vid')) evVidReady(v);
+  }, true));
+  document.addEventListener('timeupdate', ev => {
+    const v = ev.target;
+    if (v && v.classList && v.classList.contains('ev-vid')) evVidSnap(v);
+  }, true);
+  // Не загрузилось — возвращаем заглушку с датой (иначе на месте афиши осталась бы пустая подложка)
+  document.addEventListener('error', ev => {
+    const t = ev.target;
+    if (!t || !t.matches || !t.matches('.ev-poster img, .ev-poster video, .evd-poster img, .evd-poster video')) return;
+    const box = t.closest('.ev-poster, .evd-poster'), ph = box && box.querySelector('.ev-ph-w');
+    if (ph) ph.classList.remove('ev-ph-w');
   }, true);
   // Кадр, который гость только что видел в афише (и размер видео): берём с карточки до того, как экран перерисуется
   function evSnapshot(url) {
@@ -3085,7 +3133,7 @@
     const v = box && box.querySelector('video');
     if (!v) return;
     let cover = snap && snap.canvas;
-    if (!cover) { const d = document.createElement('div'); d.innerHTML = evPlaceholderHTML(e); cover = d.firstChild; }
+    if (!cover) cover = document.createElement('div');   // ровная тёмная подложка: число и месяц на миг мелькали и пропадали
     cover.classList.add('evd-snap');
     box.appendChild(cover);
     let gone = false, tm = 0;
@@ -3123,6 +3171,13 @@
     else setTimeout(evPick, 60);
   }
   function evWatchVideos(root) {
+    (root || document).querySelectorAll('video.ev-vid').forEach(v => {
+      if (v.readyState >= 2) evVidReady(v);   // кадр уже есть (видео из кэша) — событие могло пройти раньше
+      else if (v.closest('.ev-poster') && !v._cv && evCoverBy[evSrcKey(v)]) {   // список перерисовали: показываем запомненный кадр, пока видео не подхватится
+        const src = evCoverBy[evSrcKey(v)];
+        try { evCoverEl(v, src.width, src.height).getContext('2d').drawImage(src, 0, 0); } catch {}
+      }
+    });
     const vids = Array.prototype.filter.call((root || document).querySelectorAll('video.ev-vid'), v => !v.closest('.evd-other'));
     if (!vids.length) return;
     if (!('IntersectionObserver' in window)) { vids[0].muted = true; vids[0].play().catch(() => {}); return; }
@@ -3285,7 +3340,10 @@
     const v = document.getElementById(id + 'Stories');
     v.classList.remove('sv-drag', 'sv-back', 'sv-out');
     v.style.transform = ''; v.style.borderRadius = '';
-    if (currentScreen !== 'home') document.getElementById('screen-home').classList.remove('active');   // главная под окном нужна только на время жеста
+    if (currentScreen !== 'home') {   // главная под окном нужна только на время жеста: возвращаем всё как было
+      document.getElementById('screen-home').classList.remove('active');
+      document.body.classList.add('compact-header');
+    }
   }
   function storyDragStart(id, g, y) {
     const v = document.getElementById(id + 'Stories');
@@ -3295,7 +3353,10 @@
     storyPause(id);                       // пока тянем, время сторис стоит
     v.classList.remove('holding', 'sv-back', 'sv-out');   // полоски и кнопки едут вместе с окном, не прячутся
     v.classList.add('sv-drag');
-    document.getElementById('screen-home').classList.add('active');   // под окном видна главная — туда и вернёмся (как лента под сторис в Инстаграме)
+    // Под окном видна главная — ровно такая, какой станет после закрытия: с кружками «ВИП / Бар / Мои брони» и «Сейчас открыто».
+    // Раньше шапка оставалась «сжатой» (без кружков), и в конце жеста они появлялись, а всё остальное прыгало вниз.
+    document.body.classList.remove('compact-header');
+    document.getElementById('screen-home').classList.add('active');
   }
   function storyDragMove(id, g, dy, y) {
     g.pts.push({ y, t: performance.now() });
