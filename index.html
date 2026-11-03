@@ -280,6 +280,19 @@
     .screen { display: none; padding: 16px 16px 0; }
     .screen.active { display: block; }
 
+    /* Свайп между вкладками (Главная · Бронь · FAQ). Уезжающий экран вместе с шапкой главной (кружки, «Сейчас открыто») превращается
+       в «призрак» — копию на отдельном слое поверх страницы: страница под ним уже настоящая новая вкладка и спокойно перестраивается
+       (шапка главной схлопывается), глазу этого не видно. Призрак едет дальше и гаснет, новый экран одновременно выезжает навстречу —
+       пустого промежутка между экранами нет. На время жеста закреплённая шапка и нижнее меню без размытия фона: размытие под движущимся
+       слоем пересчитывается каждый кадр, на слабых телефонах из-за него и дёргалось. Слои: призрак 120 → шапка 150 → нижнее меню 200. */
+    html.tab-swipe-on .app-top { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(16,9,6,0.94); }
+    html.tab-swipe-on .bottom-nav { -webkit-backdrop-filter: none; backdrop-filter: none; background-image: linear-gradient(rgba(36,16,5,0.9), rgba(36,16,5,0.9)), var(--rim); }
+    .tab-drag { will-change: transform, opacity; }
+    .tab-ghost { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 120; overflow: hidden; pointer-events: none; will-change: transform, opacity; }
+    .tab-ghost-in { position: absolute; }
+    .tab-ghost-hdr { padding: 6px 16px 18px; border-bottom: 1px solid var(--border); }
+    .tab-ghost *, .tab-ghost *::before, .tab-ghost *::after { animation: none !important; transition: none !important; }
+
     /* Свайп «назад» от левого края: текущий экран едет за пальцем, под ним — настоящий предыдущий (как в iOS).
        Страница при этом не пересчитывается вообще: на место текущего экрана встаёт пустая вставка той же высоты,
        прокрутка страницы не меняется, шапка (.app-top, sticky) стоит как стояла. Сами экраны на время жеста —
@@ -296,14 +309,6 @@
     .swipe-hdr { position: fixed; left: 0; right: 0; z-index: 51; padding: 6px 16px 18px; border-bottom: 1px solid var(--border); pointer-events: none; will-change: transform; }
     #swipeShade { display: none; position: fixed; inset: 0; z-index: 90; background: #000; opacity: 0; pointer-events: none; }
     html.swipe-on #swipeShade { display: block; }
-
-    /* Свайп между вкладками (Главная · Бронь · FAQ): экран едет за пальцем, новый выезжает с той стороны, куда листали */
-    @keyframes tabInR { from { opacity: 0; transform: translate3d(36px,0,0); } to { opacity: 1; transform: translate3d(0,0,0); } }
-    @keyframes tabInL { from { opacity: 0; transform: translate3d(-36px,0,0); } to { opacity: 1; transform: translate3d(0,0,0); } }
-    .screen.tab-in-r { animation: tabInR .26s cubic-bezier(.22,.7,.28,1) backwards; }
-    .screen.tab-in-l { animation: tabInL .26s cubic-bezier(.22,.7,.28,1) backwards; }
-    .screen.tab-drag { will-change: transform, opacity; }
-    @media (prefers-reduced-motion: reduce) { .screen.tab-in-r, .screen.tab-in-l { animation: none; } }
 
     /* GRID */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
@@ -2464,17 +2469,21 @@
   })();
 
   // ─── Свайп между вкладками: Главная · Бронь · FAQ ───────
-  // Палец влево — следующая вкладка (Главная → Бронь → FAQ), вправо — предыдущая. Экран едет за пальцем, шапка и нижнее
-  // меню стоят на месте; отпустили дальше пятой части ширины или резким броском — вкладка меняется (так же, как нажатие
-  // на нижнее меню: «Бронь» открывается чистой формой), новый экран выезжает с той стороны, куда листали. Не дотянули — экран
-  // возвращается. Не начинается: у левого края (там свайп «назад»), в списках, которые сами листаются вбок, пока курсор стоит
-  // в поле ввода (открыта клавиатура) и пока открыто окно поверх экрана. Вертикальная прокрутка не затрагивается: жест считается
-  // горизонтальным, только если палец ушёл вбок заметно больше, чем вверх или вниз.
+  // Палец влево — следующая вкладка (Главная → Бронь → FAQ), вправо — предыдущая. Экран (на главной — вместе с кружками и «Сейчас
+  // открыто») едет за пальцем, шапка-карточка и нижнее меню стоят на месте. Отпустили дальше пятой части ширины или резким броском —
+  // вкладка меняется (так же, как нажатие на нижнее меню: «Бронь» открывается чистой формой, но уже набранное не стирается):
+  // старый экран продолжает движение и гаснет, новый выезжает навстречу, оба видны одновременно. Не дотянули — экран возвращается.
+  // Не начинается: у левого края (там свайп «назад»), в списках, которые сами листаются вбок, пока курсор стоит в поле ввода
+  // (открыта клавиатура) и пока открыто окно поверх экрана. Вертикальная прокрутка не затрагивается: жест считается горизонтальным,
+  // только если палец ушёл вбок заметно больше, чем вверх или вниз. Пока палец на экране, страница не перестраивается (на iPhone
+  // из-за этого пропадала закреплённая шапка) — только сдвиг слоя; вкладка меняется одним махом после отпускания.
   (function swipeTabs() {
     const TABS = ['home', 'book', 'faq'];
     const EDGE = 28;        // от левого края — свайп «назад», его не трогаем
     const LOCK = 12;        // на столько пикселей вбок жест становится горизонтальным
-    const FOLLOW = 0.6;     // экран едет за пальцем не 1 в 1, а чуть медленнее
+    const FOLLOW = 0.9;     // экран едет за пальцем почти один в один
+    const T_OUT = 200, T_IN = 280, T_FADE = 140, T_BACK = 170;
+    const EASE_OUT = 'cubic-bezier(.2,.6,.3,1)', EASE_IN = 'cubic-bezier(.22,.7,.28,1)';
     const root = document.documentElement;
     let S = null, timer = 0;
 
@@ -2491,57 +2500,111 @@
       return false;
     }
     const allowed = () => !reviewOnlyMode && TABS.includes(currentScreen) && !openOverlayEntry() && !root.classList.contains('swipe-on') && !editing();
-
-    function reset(s) {
-      clearTimeout(timer);
-      if (S === s) S = null;
-      if (!s || !s.el) return;
-      s.el.classList.remove('tab-drag');
-      s.el.style.transform = ''; s.el.style.opacity = ''; s.el.style.transition = '';
+    // Что едет вместе с экраном: на главной ещё и блок с кружками, он лежит в странице отдельно от экрана
+    function movers(name) {
+      const list = [], scr = document.getElementById('screen-' + name);
+      if (name === 'home') { const h = document.querySelector('.header'); if (h) list.push(h); }
+      if (scr) list.push(scr);
+      return list;
     }
-    function hardReset() { const s = S; S = null; try { reset(s); } catch {} }
 
-    // Перейти на вкладку (как нажатием на нижнее меню, но без стирания набранной брони) и показать выезд нового экрана
-    function go(name, dir) {
+    function clearStyles(els) {
+      for (const el of els) { el.classList.remove('tab-drag'); el.style.transform = ''; el.style.opacity = ''; el.style.transition = ''; }
+    }
+    // Всё убрать и вернуть страницу в обычное состояние; безопасно вызывать сколько угодно раз
+    function finish() {
+      const s = S; S = null; clearTimeout(timer);
+      if (!s) return;
+      try { for (const a of s.anims || []) { try { a.cancel(); } catch {} } } catch {}
+      try { if (s.ghost && s.ghost.parentNode) s.ghost.parentNode.removeChild(s.ghost); } catch {}
+      try { clearStyles(s.els || []); } catch {}
+      root.classList.remove('tab-swipe-on');
+    }
+
+    // Перейти на вкладку (как нажатием на нижнее меню, но без стирания набранной брони)
+    function go(name) {
       if (name === 'book') {
         // Нажатие на «Бронь» в нижнем меню начинает форму заново. Свайпом так легко зацепить вкладку, что набранное стирать нельзя:
         // если гость уже что-то заполнил (гости, пожелания), форму оставляем как есть
         const filled = !!(document.getElementById('bGuests').value || document.getElementById('bComment').value.trim());
         if (filled) showScreen('book'); else resetAndShowBook();
       } else showScreen(name);
-      const el = document.getElementById('screen-' + name);
-      if (!el || reduced()) return;
-      el.classList.remove('tab-in-l', 'tab-in-r');
-      void el.offsetWidth;
-      el.classList.add(dir > 0 ? 'tab-in-r' : 'tab-in-l');
-      setTimeout(() => el.classList.remove('tab-in-l', 'tab-in-r'), 400);
     }
 
     function setX(x) {
       const w = window.innerWidth || 1;
-      const shown = x * FOLLOW;
-      S.el.style.transform = 'translate3d(' + shown + 'px,0,0)';
-      S.el.style.opacity = String(1 - Math.min(0.55, Math.abs(x) / w * 1.1));
+      const op = String(1 - Math.min(0.4, Math.abs(x) / w * 0.8));
+      const tf = 'translate3d(' + (x * FOLLOW) + 'px,0,0)';
+      for (const el of S.els) { el.style.transform = tf; el.style.opacity = op; }
     }
 
-    function settle(commit) {
+    // Копия уезжающих блоков: те же размеры и то же место на экране, значения полей и состояния сохраняются
+    function makeGhost(els, shown, op) {
+      const first = els[0].getBoundingClientRect();     // сдвиг у нас только по горизонтали, поэтому top настоящий
+      const ghost = document.createElement('div'); ghost.className = 'tab-ghost'; ghost.setAttribute('aria-hidden', 'true'); ghost.setAttribute('inert', '');
+      const inner = document.createElement('div'); inner.className = 'tab-ghost-in';
+      inner.style.top = first.top + 'px'; inner.style.left = (first.left - shown) + 'px'; inner.style.width = first.width + 'px';
+      for (const el of els) {
+        const c = el.cloneNode(true);
+        const a = el.querySelectorAll('input,textarea,select'), b = c.querySelectorAll('input,textarea,select');
+        for (let i = 0; i < a.length && i < b.length; i++) {
+          try { if (a[i].type === 'checkbox' || a[i].type === 'radio') b[i].checked = a[i].checked; else b[i].value = a[i].value; } catch {}
+          b[i].tabIndex = -1;
+        }
+        c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+        c.classList.remove('tab-drag'); c.style.transform = ''; c.style.opacity = ''; c.style.transition = '';
+        if (c.classList.contains('header')) { c.classList.remove('header'); c.classList.add('tab-ghost-hdr'); }
+        inner.appendChild(c);
+      }
+      ghost.appendChild(inner);
+      ghost.style.transform = 'translate3d(' + shown + 'px,0,0)'; ghost.style.opacity = String(op);
+      return ghost;
+    }
+
+    function commit() {
+      const s = S, w = window.innerWidth || 1, dir = s.dir, target = TABS[s.idx + dir];
+      if (currentScreen !== s.screen || openOverlayEntry() || !target) { finish(); return; }
+      s.phase = 'anim';
+      const canAnimate = !reduced() && typeof Element.prototype.animate === 'function';
+      if (!canAnimate) { clearStyles(s.els); go(target); finish(); return; }
+      const shown = s.x * FOLLOW, op = 1 - Math.min(0.4, Math.abs(s.x) / w * 0.8);
+      // 1) призрак встаёт ровно на место настоящего экрана  2) настоящий экран возвращается в обычное состояние
+      // 3) под призраком включается новая вкладка  4) призрак уезжает и гаснет, новая вкладка выезжает. Всё в одном кадре
+      const ghost = makeGhost(s.els, shown, op);
+      document.body.appendChild(ghost); s.ghost = ghost;
+      clearStyles(s.els);
+      go(target);
+      const fresh = movers(target), out = shown - dir * w * 0.2;
+      // Сдвиг и прозрачность идут по отдельным часам: уходящий экран гаснет за 140 мс ровно так, как за те же 140 мс проявляется новый
+      // (в сумме непрозрачность всё время около единицы, пустого провала нет), а ехать оба продолжают ещё дольше
+      s.anims = [];
+      s.anims.push(ghost.animate([
+        { transform: 'translate3d(' + shown + 'px,0,0)' }, { transform: 'translate3d(' + out + 'px,0,0)' }
+      ], { duration: T_OUT, easing: EASE_OUT, fill: 'forwards' }));
+      s.anims.push(ghost.animate([{ opacity: op }, { opacity: 0 }], { duration: T_FADE, easing: 'linear', fill: 'forwards' }));
+      let longest = null;
+      for (const el of fresh) {
+        longest = el.animate([
+          { transform: 'translate3d(' + (dir * w * 0.32) + 'px,0,0)' }, { transform: 'translate3d(0,0,0)' }
+        ], { duration: T_IN, easing: EASE_IN, fill: 'backwards' });
+        s.anims.push(longest);
+        s.anims.push(el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: T_FADE, easing: 'linear', fill: 'backwards' }));
+      }
+      s.els = fresh;
+      timer = setTimeout(finish, T_IN + 120);
+      if (longest && longest.finished) longest.finished.then(() => { if (S === s) finish(); }, () => {});
+    }
+
+    function cancelBack() {
       const s = S;
       s.phase = 'anim';
-      const w = window.innerWidth || 1;
-      const dur = reduced() ? 0 : (commit ? 110 : 150);
-      if (dur) {
-        s.el.style.transition = 'transform ' + dur + 'ms cubic-bezier(.22,.7,.28,1), opacity ' + dur + 'ms linear';
-        void s.el.offsetWidth;
+      if (reduced()) { finish(); return; }
+      for (const el of s.els) {
+        el.style.transition = 'transform ' + T_BACK + 'ms ' + EASE_IN + ', opacity ' + T_BACK + 'ms linear';
+        void el.offsetWidth;
+        el.style.transform = 'translate3d(0,0,0)'; el.style.opacity = '1';
       }
-      if (commit) { s.el.style.transform = 'translate3d(' + (-s.dir * w * 0.22) + 'px,0,0)'; s.el.style.opacity = '0'; }
-      else { s.el.style.transform = 'translate3d(0,0,0)'; s.el.style.opacity = '1'; }
-      const fin = () => {
-        if (S !== s) return;
-        const ok = commit && currentScreen === s.screen && !openOverlayEntry();
-        reset(s);
-        if (ok) go(TABS[s.idx + s.dir], s.dir);
-      };
-      if (dur) timer = setTimeout(fin, dur + 30); else fin();
+      timer = setTimeout(() => { if (S === s) finish(); }, T_BACK + 30);
     }
 
     function release() {
@@ -2552,26 +2615,27 @@
         if (last.t - pts[i].t >= 60 || i === 0) { const dt = last.t - pts[i].t; v = dt > 0 ? -S.dir * (last.x - pts[i].x) / dt : 0; break; }
       }
       if (performance.now() - last.t > 120) v = 0;           // палец остановился перед тем, как отпустить: это не бросок
-      settle((mag > Math.min(w * 0.2, 110) && v > -0.2) || (v > 0.45 && mag > 30));
+      if ((mag > Math.min(w * 0.2, 110) && v > -0.2) || (v > 0.45 && mag > 30)) commit(); else cancelBack();
     }
 
     document.addEventListener('touchstart', e => {
       try {
-        if (S) { if (S.phase !== 'anim' && e.touches.length > 1) { if (S.phase === 'drag') settle(false); else S = null; } return; }
+        if (S && S.phase === 'anim') finish();                // новый жест во время анимации — прежнюю доигрывать не нужно
+        if (S) { if (e.touches.length > 1) { if (S.phase === 'drag') cancelBack(); else S = null; } return; }
         if (e.touches.length !== 1) return;
         const t = e.touches[0];
         if (t.clientX <= EDGE || !allowed() || blocked(e.target)) return;
-        const el = document.getElementById('screen-' + currentScreen);
-        if (!el) return;
-        S = { phase: 'wait', id: t.identifier, x0: t.clientX, y0: t.clientY, el, screen: currentScreen, idx: TABS.indexOf(currentScreen), dir: 0, x: 0, base: 0, pts: [{ x: t.clientX, t: performance.now() }] };
-      } catch { hardReset(); }
+        const els = movers(currentScreen);
+        if (!els.length) return;
+        S = { phase: 'wait', id: t.identifier, x0: t.clientX, y0: t.clientY, els, screen: currentScreen, idx: TABS.indexOf(currentScreen), dir: 0, x: 0, base: 0, pts: [{ x: t.clientX, t: performance.now() }] };
+      } catch { finish(); }
     }, { passive: true });
 
     document.addEventListener('touchmove', e => {
       if (!S || S.phase === 'anim') return;
       try {
         const t = touchOf(e, S.id);
-        if (!t || e.touches.length > 1) { if (S.phase === 'drag') settle(false); else S = null; return; }
+        if (!t || e.touches.length > 1) { if (S.phase === 'drag') cancelBack(); else S = null; return; }
         const dx = t.clientX - S.x0, dy = t.clientY - S.y0;
         if (S.phase === 'wait') {
           if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { S = null; return; }              // это прокрутка
@@ -2579,9 +2643,10 @@
           const dir = dx < 0 ? 1 : -1;                                                                // влево — следующая вкладка
           if (!allowed() || !TABS[S.idx + dir]) { S = null; return; }                                  // дальше вкладок нет
           S.dir = dir; S.base = dx; S.phase = 'drag';
-          S.el.classList.add('tab-drag'); S.el.style.transition = 'none';
+          root.classList.add('tab-swipe-on');
+          for (const el of S.els) { el.classList.add('tab-drag'); el.style.transition = 'none'; }
         }
-        if (currentScreen !== S.screen || openOverlayEntry()) { hardReset(); return; }                 // пока тянули, экран сменился или открылось окно
+        if (currentScreen !== S.screen || openOverlayEntry()) { finish(); return; }                    // пока тянули, экран сменился или открылось окно
         if (e.cancelable) e.preventDefault();
         let x = dx - S.base;
         if (x * S.dir > 0) x = 0;                                                                      // обратно за исходное место не уводим
@@ -2589,18 +2654,18 @@
         S.pts.push({ x: t.clientX, t: performance.now() });
         if (S.pts.length > 8) S.pts.shift();
         setX(x);
-      } catch { hardReset(); }
+      } catch { finish(); }
     }, { passive: false });
 
     document.addEventListener('touchend', () => {
       if (!S || S.phase === 'anim') return;
-      try { if (S.phase === 'drag') release(); else S = null; } catch { hardReset(); }
+      try { if (S.phase === 'drag') release(); else S = null; } catch { finish(); }
     }, { passive: true });
     document.addEventListener('touchcancel', () => {
       if (!S || S.phase === 'anim') return;
-      try { if (S.phase === 'drag') settle(false); else S = null; } catch { hardReset(); }
+      try { if (S.phase === 'drag') cancelBack(); else S = null; } catch { finish(); }
     }, { passive: true });
-    document.addEventListener('visibilitychange', () => { if (document.hidden && S) hardReset(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && S) finish(); });
   })();
 
   function resetAndShowBook() {
