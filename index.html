@@ -402,6 +402,7 @@
     .cc-card-mark { flex: none; align-self: flex-start; height: 104px; width: auto; }
     .cc-card-qr { flex: none; align-self: center; width: clamp(104px, 34vw, 125px); aspect-ratio: 1; border-radius: 10px; overflow: hidden; line-height: 0; }
     .cc-card-qr svg { width: 100%; height: 100%; display: block; }
+    .cc-card-qr.stale svg { opacity: 0.35; transition: opacity 0.2s; }
     .cc-card-lv { font-family: 'Jost', 'Inter', sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 2.5px; text-transform: uppercase; line-height: 1; margin-bottom: 7px; color: var(--lv, var(--accent)); }
     .cc-card-name { font-size: 18px; font-weight: 500; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
     .cc-disc { display: none; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 13px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-card); font-size: 13.5px; color: var(--text-sub); }
@@ -1641,7 +1642,7 @@
     <div class="cc-card-qr" id="cardViewQr"></div>
   </div>
   <div class="cc-disc" id="cardViewDisc"><span>Ваша скидка</span><b id="cardViewDiscVal">0%</b></div>
-  <p class="cc-card-note">Покажите QR на баре. Карта привязана к вашему номеру телефона, уровень зависит от трат в «На Крыше».</p>
+  <p class="cc-card-note">Покажите QR на баре. Код обновляется каждую минуту, поэтому скриншот не сработает. Уровень зависит от трат в «На Крыше».</p>
 </div>
 
 <!-- НАПИСАТЬ УПРАВЛЯЮЩЕМУ -->
@@ -4050,11 +4051,40 @@ function qrPlateSvg(text) {
     if (el) el.style.display = cardState && !cardState.issued && !reviewOnlyMode ? 'block' : 'none';
   }
 
+  // Подписанный QR карты: просим новый, пока открыт экран карты; закрыли экран или свернули приложение — перестаём
+  const cardQr = { code: '', at: 0, timer: null, unsigned: false };
+  async function refreshCardQr() {
+    clearTimeout(cardQr.timer); cardQr.timer = null;
+    if (currentScreen !== 'card' || document.hidden || !cardState || !cardState.issued || !hasTelegramAuth()) return;
+    let next = 55000;
+    try {
+      const res = await apiFetch('/api/card/qr', { method: 'POST', timeout: 8000 });
+      const d = res.ok ? await res.json() : null;
+      const box = document.getElementById('cardViewQr');
+      if (d && d.code) {
+        if (d.code !== cardQr.code && box) box.innerHTML = qrPlateSvg(d.code);
+        cardQr.code = d.code; cardQr.at = Date.now(); cardQr.unsigned = false;
+        if (box) box.classList.remove('stale');
+        next = Math.max(5000, Math.min(60000, (Number(d.refreshMs) || 55000) + 500));
+      } else if (d && d.code === null) {
+        // сервер ещё не умеет подписывать (нет миграции 051): остаётся QR с номером, как раньше
+        cardQr.unsigned = true; if (box) box.classList.remove('stale');
+        return;
+      } else next = 15000;
+    } catch (e) { next = 15000; }
+    if (currentScreen === 'card' && !document.hidden) cardQr.timer = setTimeout(refreshCardQr, next);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && currentScreen === 'card') refreshCardQr(); });
+
   function renderCardScreen() {
     if (!cardState || !cardState.issued) return;
     const user = getTelegramUser();
     document.getElementById('cardViewName').textContent = cardName || (user ? [user.first_name, user.last_name].filter(Boolean).join(' ') : '') || 'Гость';
-    document.getElementById('cardViewQr').innerHTML = qrPlateSvg(String(cardState.number || '').replace(/\D/g, ''));
+    // QR меняется каждую минуту (подписанный код с сервера). Пока свежего кода нет — номер карты, приглушённо.
+    const qrBox = document.getElementById('cardViewQr'), fresh = cardQr.code && Date.now() - cardQr.at < 2 * 60 * 1000;
+    qrBox.innerHTML = qrPlateSvg(fresh ? cardQr.code : String(cardState.number || '').replace(/\D/g, ''));
+    qrBox.classList.toggle('stale', !fresh && !cardQr.unsigned);
+    if (!cardQr.timer) refreshCardQr();
     const key = cardLevelKey(), lv = document.getElementById('cardViewLevel');
     lv.textContent = CARD_LEVELS[key]; setLevelClass(document.getElementById('cardView'), key);
     const disc = document.getElementById('cardViewDisc');
