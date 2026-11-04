@@ -376,8 +376,8 @@
     .cc-strip .cc-kicker { margin-bottom: 5px; }
     .cc-strip .cc-sub { margin-top: 6px; font-size: 12px; }
     .cc-num { font-family: 'Jost', 'Inter', sans-serif; font-size: 20px; font-weight: 500; line-height: 1.1; letter-spacing: 1.5px; font-variant-numeric: tabular-nums; color: var(--lv, var(--text)); }
-    /* цвета уровней карты: Bronze, Silver, Gold */
-    .lv-bronze { --lv: #D9955A; } .lv-silver { --lv: #CDD2DA; } .lv-gold { --lv: #EBC96B; }
+    /* цвета уровней карты: Bronze, Silver, Gold, Platinum */
+    .lv-bronze { --lv: #D9955A; } .lv-silver { --lv: #CDD2DA; } .lv-gold { --lv: #EBC96B; } .lv-platinum { --lv: #E4E7EE; }
     .cc-mini { position: relative; overflow: hidden; flex-shrink: 0; width: 96px; height: 62px; border-radius: 11px; border: 1px solid transparent; background-image: linear-gradient(135deg, #34190c, #20120A), linear-gradient(135deg, rgba(240,223,192,0.34), rgba(240,223,192,0.12) 50%, rgba(240,223,192,0.10)); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 8px 18px rgba(0,0,0,0.45); }
     .cc-mini::before { content: ''; position: absolute; left: -12%; top: -20%; width: 80%; height: 90%; background: radial-gradient(circle, rgba(184,115,51,0.35), transparent 70%); }
     .cc-mini img { position: absolute; left: 9px; top: 8px; height: 68%; width: auto; }
@@ -408,7 +408,7 @@
     .cc-disc { display: none; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 13px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-card); font-size: 13.5px; color: var(--text-sub); }
     .cc-disc b { font-family: 'Jost', 'Inter', sans-serif; font-size: 20px; font-weight: 500; letter-spacing: 1px; color: var(--lv, var(--accent)); }
     .cc-card-note { margin: 14px 8px 0; text-align: center; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }
-    /* сама карта меняет цвет по уровню: Bronze — тёмная бронзовая (как была), Silver — серебро, Gold — золото */
+    /* сама карта меняет цвет по уровню: Bronze — тёмная бронзовая (как была), Silver — серебро, Gold — золото, Platinum — графит с жемчужным блеском */
     .cc-card.lv-silver, .cc-card.lv-gold { box-shadow: 0 18px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.55); }
     .cc-card.lv-silver::after, .cc-card.lv-gold::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(115deg, transparent 36%, rgba(255,255,255,0.38) 46%, transparent 56%); }
     .cc-card.lv-silver { background-image: linear-gradient(135deg, #eef0f3 0%, #c4c9d1 34%, #e6e9ee 52%, #a3aab6 100%), linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.4) 50%, rgba(125,133,146,0.6) 100%); }
@@ -430,6 +430,39 @@
     .cc-mini.lv-gold::before { background: radial-gradient(circle, rgba(255,250,225,0.85), transparent 70%); }
     .cc-mini.lv-silver::after { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2323282F' stroke-opacity='.75' stroke-width='1.6' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='6' height='6' rx='1'/%3E%3Crect x='15' y='3' width='6' height='6' rx='1'/%3E%3Crect x='3' y='15' width='6' height='6' rx='1'/%3E%3Cpath d='M15 15h2v2h-2zM19 19h2v2h-2zM19 15h2M15 19v2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat; }
     .cc-mini.lv-gold::after { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233A2708' stroke-opacity='.75' stroke-width='1.6' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='6' height='6' rx='1'/%3E%3Crect x='15' y='3' width='6' height='6' rx='1'/%3E%3Crect x='3' y='15' width='6' height='6' rx='1'/%3E%3Cpath d='M15 15h2v2h-2zM19 19h2v2h-2zM19 15h2M15 19v2' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat; }
+        /* Platinum: тёмный графит с холодным жемчужным отблеском и светлой кромкой — дороже и строже серебра */
+    .cc-card.lv-platinum { box-shadow: 0 20px 44px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.42);
+      background-image: linear-gradient(135deg, #474d5a 0%, #20242b 36%, #343a46 55%, #0f1115 100%), linear-gradient(135deg, rgba(244,246,252,0.95) 0%, rgba(244,246,252,0.4) 48%, rgba(120,128,148,0.65) 100%); }
+    .cc-card.lv-platinum::before { background: radial-gradient(circle, rgba(226,232,248,0.42) 0%, rgba(200,210,232,0.14) 42%, transparent 74%); }
+    .cc-card.lv-platinum::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(115deg, transparent 33%, rgba(255,255,255,0.2) 46%, transparent 59%); }
+    .cc-card.lv-platinum .cc-logo, .cc-mini.lv-platinum img { filter: brightness(0) invert(1) opacity(0.9); }
+    .cc-card.lv-platinum .cc-card-lv { color: #D9DDE6; letter-spacing: 3px; }
+    .cc-card.lv-platinum .cc-card-name { color: #F2F4F8; }
+    .cc-card.lv-platinum .cc-card-qr { box-shadow: 0 3px 12px rgba(0,0,0,0.45); }
+    .cc-card.lv-platinum .cc-card-qr rect { fill: #eef0f5; } .cc-card.lv-platinum .cc-card-qr path { fill: #12141a; }
+    .cc-mini.lv-platinum { background-image: linear-gradient(135deg, #474d5a, #20242b 45%, #0f1115), linear-gradient(135deg, rgba(244,246,252,0.95), rgba(244,246,252,0.4) 50%, rgba(120,128,148,0.65)); }
+    .cc-mini.lv-platinum::before { background: radial-gradient(circle, rgba(226,232,248,0.45), transparent 70%); }
+    /* пока состояние карты ещё не пришло и в телефоне его нет (первый запуск), на главной стоит заготовка: блоки ниже не прыгают */
+    .cc-skel { display: none; height: 92px; margin-top: 14px; margin-bottom: 10px; border-radius: 16px; border: 1px solid var(--border); box-sizing: border-box;
+      background: linear-gradient(100deg, var(--bg-card) 30%, rgba(240,223,192,0.07) 50%, var(--bg-card) 70%) 0 0 / 220% 100% var(--bg-card); animation: ccSkel 1.4s ease-in-out infinite; }
+    @keyframes ccSkel { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+    @media (prefers-reduced-motion: reduce) { .cc-skel { animation: none; } }
+    .cc-card-qr.wait { background: rgba(240,223,192,0.08); animation: ccSkel 1.4s ease-in-out infinite; }
+    /* оборот карты: тянешь за правый край влево — карта разворачивается и показывает «Добро пожаловать домой» */
+    .cc-flip { perspective: 1200px; -webkit-perspective: 1200px; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; outline: none; border-radius: 22px; }
+    .cc-flip:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+    .cc-flip-in { position: relative; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform 0.75s cubic-bezier(0.25, 0.8, 0.25, 1); }
+    .cc-flip-in.drag { transition: none; }
+    .cc-flip .cc-face { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+    .cc-flip .cc-back { position: absolute; inset: 0; transform: rotateY(180deg); flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
+    .cc-back-t { font-family: 'Jost', 'Inter', sans-serif; font-size: clamp(14px, 4.6vw, 18px); font-weight: 500; letter-spacing: 0.22em; text-indent: 0.22em; line-height: 1.75; text-transform: uppercase; color: var(--lv, var(--accent)); }
+    .cc-back-rule { width: 56px; height: 1px; background: currentColor; opacity: 0.5; color: var(--lv, var(--accent)); }
+    .cc-card.lv-silver .cc-back-t, .cc-card.lv-silver .cc-back-rule { color: #3f4650; }
+    .cc-card.lv-gold .cc-back-t, .cc-card.lv-gold .cc-back-rule { color: #5b3d0a; }
+    .cc-card.lv-platinum .cc-back-t, .cc-card.lv-platinum .cc-back-rule { color: #E6E9F0; }
+    .cc-flip-hint { margin: 10px 0 0; text-align: center; font-size: 11.5px; letter-spacing: 0.3px; color: var(--text-muted); transition: opacity 0.4s; }
+    .cc-flip-hint.gone { opacity: 0; pointer-events: none; height: 0; margin: 0; overflow: hidden; }
+    @media (prefers-reduced-motion: reduce) { .cc-flip-in { transition: none; } }
     .cc-offer { display: none; margin: 14px 0 0; padding: 14px 16px; border: 1px solid rgba(184,115,51,0.3); border-radius: 14px; background: var(--accent-dim); text-align: left; cursor: pointer; }
     .cc-offer .cc-kicker { margin-bottom: 5px; }
     .cc-offer-h { font-size: 15px; font-weight: 500; line-height: 1.25; color: var(--text); }
@@ -1507,6 +1540,7 @@
 <!-- HOME -->
 <div class="screen active" id="screen-home">
   <!-- Карта гостя: пока не оформлена — приглашение, оформлена — полоса с номером. Показывается, когда сервер сообщил, что карты включены (поле card в /api/me). -->
+  <div class="cc-skel" id="homeCardSkel" aria-hidden="true"></div>
   <div class="card cc-promo" id="homeCardPromo" onclick="openCardReg('app_home')" role="button" tabindex="0">
     <div>
       <div class="cc-kicker">Карта гостя</div>
@@ -1631,18 +1665,29 @@
 <!-- КАРТА ГОСТЯ -->
 <div class="screen" id="screen-card">
   <div class="sec" style="margin-top:14px">Ваша карта</div>
-  <div class="cc-card" id="cardView" role="img" aria-label="Карта гостя «На Крыше», QR-код для кассы и бара">
-    <div class="cc-card-body">
-      <img class="cc-logo cc-card-mark" alt="">
-      <div>
-        <div class="cc-card-lv" id="cardViewLevel">Bronze</div>
-        <div class="cc-card-name" id="cardViewName">Гость</div>
+  <!-- Карту можно перевернуть свайпом (тянуть с правого края влево, работает и в другую сторону): на обороте — «Добро пожаловать домой» -->
+  <div class="cc-flip" id="cardFlip" tabindex="0" role="button" aria-label="Карта гостя. Проведите по карте или нажмите Enter, чтобы перевернуть">
+    <div class="cc-flip-in" id="cardFlipIn" data-flipped="false">
+      <div class="cc-card cc-face" id="cardView" role="img" aria-label="Карта гостя «На Крыше», QR-код для кассы и бара">
+        <div class="cc-card-body">
+          <img class="cc-logo cc-card-mark" alt="">
+          <div>
+            <div class="cc-card-lv" id="cardViewLevel">Bronze</div>
+            <div class="cc-card-name" id="cardViewName">Гость</div>
+          </div>
+        </div>
+        <div class="cc-card-qr" id="cardViewQr"></div>
+      </div>
+      <div class="cc-card cc-face cc-back" id="cardBack" aria-hidden="true">
+        <div class="cc-back-rule"></div>
+        <div class="cc-back-t">Добро пожаловать<br>домой</div>
+        <div class="cc-back-rule"></div>
       </div>
     </div>
-    <div class="cc-card-qr" id="cardViewQr"></div>
   </div>
+  <div class="cc-flip-hint" id="cardFlipHint">Проведите по карте — она перевернётся</div>
   <div class="cc-disc" id="cardViewDisc"><span>Ваша скидка</span><b id="cardViewDiscVal">0%</b></div>
-  <p class="cc-card-note">Покажите QR на баре. Код обновляется каждую минуту, поэтому скриншот не сработает. Уровень зависит от трат в «На Крыше».</p>
+  <p class="cc-card-note">Покажите QR на баре. Код меняется каждое утро, поэтому старый скриншот не сработает. Уровень зависит от трат в «На Крыше».</p>
 </div>
 
 <!-- НАПИСАТЬ УПРАВЛЯЮЩЕМУ -->
@@ -3772,6 +3817,7 @@
       });
     }
     if (name === 'profile') loadProfile();
+    if (name === 'card' && window.cardFlipReset) window.cardFlipReset();   // карта всегда открывается лицом (с QR)
     if (name === 'cardreg') initCardReg();
     if (name === 'card') renderCardScreen();
   };
@@ -3987,16 +4033,53 @@
   const PRIVACY_URL = '';   // ссылка на политику обработки персональных данных; пока пусто — согласие без ссылки (текст ждёт юриста)
   let cardState = null;     // последнее, что сообщил сервер: { ready, issued, canIssue, number, level, discount }
   let cardName = '', cardPhone = '', cardBirthday = '';
+  const cardBoot = Date.now();
   let cardSource = 'app_home';
   const cardChecks = { pd: false, mk: false };
 
-  function noteCard(me) {
-    if (!me || typeof me !== 'object') return;
-    cardState = (me.card && me.card.ready && hasTelegramAuth()) ? me.card : null;
-    if (me.bound) { cardName = me.name || cardName; cardPhone = me.phone || ''; cardBirthday = me.birthday || ''; }
+  // Состояние карты запоминается в телефоне (без номера и кода): при следующем открытии полоса карты на главной
+  // рисуется сразу, а свежие данные с сервера приходят следом и при необходимости её поправляют.
+  const CARD_CACHE_KEY = 'nk_card_v1';
+  let cardResolved = false;     // сервер хоть раз ответил про карту в этом запуске
+  const cardCacheUid = () => { const u = getTelegramUser(); return u && u.id ? String(u.id) : ''; };
+  function cardCacheSave() {
+    try {
+      const uid = cardCacheUid();
+      if (!cardState || !uid) { localStorage.removeItem(CARD_CACHE_KEY); return; }
+      localStorage.setItem(CARD_CACHE_KEY, JSON.stringify({ uid, at: Date.now(), card: { ready: true, issued: !!cardState.issued, canIssue: !!cardState.canIssue, level: cardState.level || 'bronze', discount: Number(cardState.discount) || 0 } }));
+    } catch {}
+  }
+  function cardFromCache() {
+    if (!hasTelegramAuth() || reviewOnlyMode || cardState) return;
+    try {
+      const c = JSON.parse(localStorage.getItem(CARD_CACHE_KEY) || 'null');
+      if (!c || c.uid !== cardCacheUid() || !c.card || !c.card.ready || !(Date.now() - c.at < 30 * 24 * 3600 * 1000)) return;
+      cardState = c.card;
+      renderHomeCard(); renderBookingCardOffer();
+    } catch {}
+  }
+  function applyCardState(card) {
+    cardResolved = true;
+    cardState = (card && card.ready && hasTelegramAuth()) ? card : null;
+    cardCacheSave();
     renderHomeCard();
     renderBookingCardOffer();
     if (currentScreen === 'card') renderCardScreen();
+  }
+  function noteCard(me) {
+    if (!me || typeof me !== 'object') return;
+    if (me.bound) { cardName = me.name || cardName; cardPhone = me.phone || ''; cardBirthday = me.birthday || ''; }
+    applyCardState(me.card);
+  }
+  // Только карта, без броней и истории: самый быстрый ответ сервера, чтобы блок карты на главной не отставал от остальных
+  async function fetchCardState() {
+    if (!hasTelegramAuth() || reviewOnlyMode) return;
+    try {
+      const res = await apiFetch('/api/card/state', { timeout: 6000 });
+      if (!res.ok) return;
+      const j = await res.json();
+      if (j && j.card && !cardResolved) applyCardState(j.card);
+    } catch {}
   }
 
 /* QR-код рисуется в самой странице, без сети. Библиотека qrcode-generator 1.4.4, (c) 2009 Kazuhiko Arase, лицензия MIT (http://www.opensource.org/licenses/mit-license.php). QR Code — зарегистрированный знак DENSO WAVE INCORPORATED. */
@@ -4020,13 +4103,13 @@ function qrPlateSvg(text) {
   }
 
   // Уровень карты приходит от сервера (по тратам гостя); у прежнего сервера его нет — тогда Bronze
-  const CARD_LEVELS = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' };
+  const CARD_LEVELS = { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' };
   const cardLevelKey = () => (cardState && CARD_LEVELS[cardState.level] ? cardState.level : 'bronze');
   // Скидка уровня в процентах; 0 или поля нет (скидка не обещана) — гостю её не показываем
   const cardDiscount = () => { const d = cardState ? Number(cardState.discount) : 0; return Number.isFinite(d) && d > 0 && d <= 100 ? Math.round(d) : 0; };
   function setLevelClass(el, key) {
     if (!el) return;
-    el.classList.remove('lv-bronze', 'lv-silver', 'lv-gold');
+    el.classList.remove('lv-bronze', 'lv-silver', 'lv-gold', 'lv-platinum');
     el.classList.add('lv-' + key);
   }
 
@@ -4035,6 +4118,8 @@ function qrPlateSvg(text) {
     const promo = document.getElementById('homeCardPromo'), strip = document.getElementById('homeCardStrip');
     if (!promo || !strip) return;
     const on = !!cardState && !reviewOnlyMode;
+    const skel = document.getElementById('homeCardSkel');
+    if (skel) skel.style.display = !cardState && !cardResolved && !reviewOnlyMode && hasTelegramAuth() && Date.now() - cardBoot < 8000 ? 'block' : 'none';
     promo.style.display = on && !cardState.issued ? 'block' : 'none';
     strip.style.display = on && cardState.issued ? 'flex' : 'none';
     if (on && cardState.issued) {
@@ -4051,27 +4136,48 @@ function qrPlateSvg(text) {
     if (el) el.style.display = cardState && !cardState.issued && !reviewOnlyMode ? 'block' : 'none';
   }
 
-  // Подписанный QR карты: просим новый, пока открыт экран карты; закрыли экран или свернули приложение — перестаём
-  const cardQr = { code: '', at: 0, timer: null, unsigned: false };
+  // Подписанный QR карты. Код меняется раз в сутки (в 06:00 по Москве), поэтому запоминается в телефоне:
+  // на баре, где связь плохая, карта открывается сразу и без сети. Новый код просим, только когда старый кончился.
+  const CARD_QR_KEY = 'nk_cardqr_v1';
+  const cardQr = { code: '', until: 0, timer: null, unsigned: false };
+  function cardQrLoad() {
+    if (cardQr.code) return;
+    try {
+      const c = JSON.parse(localStorage.getItem(CARD_QR_KEY) || 'null');
+      if (c && c.uid === cardCacheUid() && typeof c.code === 'string' && /^NK1\./.test(c.code) && c.until > Date.now()) { cardQr.code = c.code; cardQr.until = c.until; }
+    } catch {}
+  }
+  function cardQrSave() {
+    try { localStorage.setItem(CARD_QR_KEY, JSON.stringify({ uid: cardCacheUid(), code: cardQr.code, until: cardQr.until })); } catch {}
+  }
+  const cardQrFresh = () => !!cardQr.code && Date.now() < cardQr.until;
   async function refreshCardQr() {
     clearTimeout(cardQr.timer); cardQr.timer = null;
     if (currentScreen !== 'card' || document.hidden || !cardState || !cardState.issued || !hasTelegramAuth()) return;
-    let next = 55000;
+    cardQrLoad();
+    const box = document.getElementById('cardViewQr');
+    // действующий код уже есть — сервер не спрашиваем, просто следим за концом суток (не дольше часа: вдруг приложение лежало открытым)
+    if (cardQrFresh() && cardQr.until - Date.now() > 60 * 1000) {
+      cardQr.timer = setTimeout(refreshCardQr, Math.min(60 * 60 * 1000, cardQr.until - Date.now() + 500));
+      return;
+    }
+    let next = 15000;
     try {
       const res = await apiFetch('/api/card/qr', { method: 'POST', timeout: 8000 });
       const d = res.ok ? await res.json() : null;
-      const box = document.getElementById('cardViewQr');
       if (d && d.code) {
-        if (d.code !== cardQr.code && box) box.innerHTML = qrPlateSvg(d.code);
-        cardQr.code = d.code; cardQr.at = Date.now(); cardQr.unsigned = false;
-        if (box) box.classList.remove('stale');
-        next = Math.max(5000, Math.min(60000, (Number(d.refreshMs) || 55000) + 500));
+        cardQr.code = d.code; cardQr.unsigned = false;
+        cardQr.until = Date.now() + Math.max(1000, Number(d.refreshMs) || 60 * 60 * 1000);
+        cardQrSave();
+        if (box) { box.innerHTML = qrPlateSvg(d.code); box.classList.remove('stale', 'wait'); }
+        next = Math.min(60 * 60 * 1000, cardQr.until - Date.now() + 500);
       } else if (d && d.code === null) {
         // сервер ещё не умеет подписывать (нет миграции 051): остаётся QR с номером, как раньше
-        cardQr.unsigned = true; if (box) box.classList.remove('stale');
+        cardQr.unsigned = true;
+        if (box) { box.classList.remove('stale', 'wait'); if (cardState && cardState.number) box.innerHTML = qrPlateSvg(String(cardState.number).replace(/\D/g, '')); }
         return;
-      } else next = 15000;
-    } catch (e) { next = 15000; }
+      }
+    } catch (e) { /* нет связи — попробуем ещё раз через 15 секунд */ }
     if (currentScreen === 'card' && !document.hidden) cardQr.timer = setTimeout(refreshCardQr, next);
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden && currentScreen === 'card') refreshCardQr(); });
@@ -4080,10 +4186,13 @@ function qrPlateSvg(text) {
     if (!cardState || !cardState.issued) return;
     const user = getTelegramUser();
     document.getElementById('cardViewName').textContent = cardName || (user ? [user.first_name, user.last_name].filter(Boolean).join(' ') : '') || 'Гость';
-    // QR меняется каждую минуту (подписанный код с сервера). Пока свежего кода нет — номер карты, приглушённо.
-    const qrBox = document.getElementById('cardViewQr'), fresh = cardQr.code && Date.now() - cardQr.at < 2 * 60 * 1000;
-    qrBox.innerHTML = qrPlateSvg(fresh ? cardQr.code : String(cardState.number || '').replace(/\D/g, ''));
-    qrBox.classList.toggle('stale', !fresh && !cardQr.unsigned);
+    // Действующий код (из телефона или с сервера) рисуется сразу. Нет кода — заготовка, пока он не придёт; если сервер
+    // подписывать не умеет, остаётся прежний QR с номером.
+    cardQrLoad();
+    const qrBox = document.getElementById('cardViewQr');
+    if (cardQrFresh()) { qrBox.innerHTML = qrPlateSvg(cardQr.code); qrBox.classList.remove('stale', 'wait'); }
+    else if (cardQr.unsigned && cardState.number) { qrBox.innerHTML = qrPlateSvg(String(cardState.number).replace(/\D/g, '')); qrBox.classList.remove('stale', 'wait'); }
+    else { qrBox.innerHTML = ''; qrBox.classList.add('wait'); qrBox.classList.remove('stale'); }
     if (!cardQr.timer) refreshCardQr();
     const key = cardLevelKey(), lv = document.getElementById('cardViewLevel');
     lv.textContent = CARD_LEVELS[key]; setLevelClass(document.getElementById('cardView'), key);
@@ -4091,8 +4200,69 @@ function qrPlateSvg(text) {
     disc.style.display = cardDiscount() ? 'flex' : 'none';
     document.getElementById('cardViewDiscVal').textContent = cardDiscount() + '%';
     setLevelClass(disc, key);
+    setLevelClass(document.getElementById('cardBack'), key);
     document.getElementById('cardView').setAttribute('aria-label', `Карта гостя «На Крыше», уровень ${CARD_LEVELS[key]}, QR-код для кассы и бара`);
   }
+
+  // Оборот карты. Тянешь по карте (удобнее всего за правый край, влево) — она поворачивается следом за пальцем; отпустил
+  // за серединой или резким движением — переворачивается, иначе возвращается. Работает в обе стороны, мышью и с клавиатуры.
+  // Вертикальный жест остаётся прокруткой страницы.
+  const cardFlip = { rot: 0, drag: null, seen: false };
+  (function initCardFlip() {
+    const wrap = document.getElementById('cardFlip'), inner = document.getElementById('cardFlipIn'), hint = document.getElementById('cardFlipHint');
+    if (!wrap || !inner) return;
+    try { cardFlip.seen = localStorage.getItem('nk_flip_seen') === '1'; } catch {}
+    if (cardFlip.seen && hint) hint.classList.add('gone');
+    const isBack = () => Math.round(cardFlip.rot / 180) % 2 !== 0;
+    const paint = (deg) => { inner.style.transform = 'rotateY(' + deg + 'deg)'; };
+    const settle = () => {                       // после поворота приводим угол к 0 или 180, чтобы он не рос с каждым переворотом
+      cardFlip.rot = ((Math.round(cardFlip.rot / 180) * 180) % 360 + 360) % 360;
+      inner.classList.add('drag'); paint(cardFlip.rot); void inner.offsetWidth; inner.classList.remove('drag');
+    };
+    const mark = () => {
+      const b = isBack(); inner.dataset.flipped = String(b);
+      const front = document.getElementById('cardView'), back = document.getElementById('cardBack');
+      if (front) front.setAttribute('aria-hidden', String(b));
+      if (back) back.setAttribute('aria-hidden', String(!b));
+      if (b && !cardFlip.seen) { cardFlip.seen = true; if (hint) hint.classList.add('gone'); try { localStorage.setItem('nk_flip_seen', '1'); } catch {} }
+      try { if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); } catch {}
+    };
+    inner.addEventListener('transitionend', (e) => { if (e.target === inner && e.propertyName === 'transform') settle(); });
+    window.cardFlipReset = () => { cardFlip.rot = 0; inner.classList.add('drag'); paint(0); void inner.offsetWidth; inner.classList.remove('drag'); inner.dataset.flipped = 'false'; };
+    wrap.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      cardFlip.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now(), moved: false, w: wrap.offsetWidth || 320, dx: 0 };
+    });
+    wrap.addEventListener('pointermove', (e) => {
+      const d = cardFlip.drag; if (!d || e.pointerId !== d.id) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (!d.moved) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        if (Math.abs(dy) > Math.abs(dx)) { cardFlip.drag = null; return; }       // это прокрутка страницы
+        d.moved = true; settle(); inner.classList.add('drag'); try { wrap.setPointerCapture(e.pointerId); } catch {}
+      }
+      d.dx = dx;
+      paint(cardFlip.rot + Math.max(-180, Math.min(180, -dx / d.w * 180)));
+    });
+    const end = (e, cancelled) => {
+      const d = cardFlip.drag; if (!d || e.pointerId !== d.id) return;
+      cardFlip.drag = null;
+      if (!d.moved) return;
+      try { wrap.releasePointerCapture(e.pointerId); } catch {}
+      const fast = Math.abs(d.dx) > 30 && Math.abs(d.dx) / Math.max(1, Date.now() - d.t) > 0.45;
+      const turn = !cancelled && (Math.abs(d.dx) / d.w > 0.28 || fast);
+      inner.classList.remove('drag');
+      if (turn) { cardFlip.rot += d.dx < 0 ? 180 : -180; mark(); }
+      paint(cardFlip.rot);
+      if (!turn) settle();
+    };
+    wrap.addEventListener('pointerup', (e) => end(e, false));
+    wrap.addEventListener('pointercancel', (e) => end(e, true));
+    wrap.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault(); cardFlip.rot += 180; inner.classList.remove('drag'); paint(cardFlip.rot); mark();
+    });
+  })();
 
   function openCardReg(source) {
     cardSource = source || 'app_home';
@@ -5618,6 +5788,12 @@ function qrPlateSvg(text) {
   }
   // Карта гостя: ?card=<код> в ссылке (бот открывает мини-апп так после t.me/<бот>?start=card_<код>) или start_param «card_<код>»
   if (!reviewOnlyMode) {
+    // Полоса карты на главной: сразу из телефона (если гость уже открывал приложение), свежая карта — отдельным быстрым
+    // запросом, не дожидаясь /api/me с бронями и историей. Пока нет ни того ни другого — заготовка, чтобы блоки ниже не прыгали.
+    cardFromCache();
+    renderHomeCard();
+    fetchCardState();
+    setTimeout(renderHomeCard, 8100);   // сервер так и не ответил — заготовку убираем
     const startCard = /^card(?:_([a-z]{2,4}))?$/.exec(tgStartParam);
     const cardParam = new URLSearchParams(window.location.search).get('card') || (startCard ? (startCard[1] || 'bot') : '');
     if (cardParam) cardEntry(cardParam);
