@@ -307,6 +307,10 @@
     .swipe-hdr { position: fixed; left: 0; right: 0; z-index: 51; padding: 6px 16px 18px; border-bottom: 1px solid var(--border); pointer-events: none; will-change: transform; }
     #swipeShade { display: none; position: fixed; inset: 0; z-index: 90; background: #000; opacity: 0; pointer-events: none; }
     html.swipe-on #swipeShade { display: block; }
+    /* Свайп «назад» из карточки блюда: уезжает само окно блюда (оно и так лежит поверх страницы), страница под ним стоит как стояла,
+       затемнение встаёт между ними (выше шапки 150 и нижнего меню 200, ниже окна блюда 500) */
+    html.swipe-ov #swipeShade { z-index: 450; }
+    .menu-detail.swipe-ov-cur { box-shadow: -14px 0 32px rgba(0,0,0,0.55); will-change: transform; }
 
     /* GRID */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
@@ -2611,7 +2615,10 @@
   // Экран едет за пальцем, под ним — настоящий предыдущий экран на своём месте прокрутки (как в iOS).
   // Отпустили дальше трети ширины или резким броском — обычный «назад» (тот же goBack, что у кнопки Telegram);
   // не дотянули — экран возвращается на место. Не работает: на главной, в «Бар»/«ВИП» (там свои жесты историй),
-  // в отзыве и чаевых по QR и пока открыто любое окно поверх экрана (его закрывает кнопка «назад» как раньше).
+  // в отзыве и чаевых по QR и пока открыто любое окно поверх экрана, кроме карточки блюда (остальные окна закрывает
+  // кнопка «назад» как раньше).
+  // Карточка блюда (menuDetailOverlay): тот же жест от левого края, но едет само окно блюда, а под ним остаётся
+  // страница меню; «назад» закрывает только карточку, экран не меняется. Работает на любом экране, где её открыли.
   // Важно для iPhone: пока палец на экране, страница не пересчитывается (высота, прокрутка, шапка остаются как были) —
   // иначе закреплённая шапка на пару кадров пропадала. Менять страницу можно только в самом конце, одним махом.
   (function swipeBack() {
@@ -2624,11 +2631,26 @@
     let S = null, shade = null, timer = 0;
 
     const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
-    const allowed = () => !reviewOnlyMode && !NO_SWIPE.includes(currentScreen) && !openOverlayEntry();
+    const dishOpen = () => { const o = openOverlayEntry(); return !!o && o[0] === 'menuDetailOverlay'; };
+    const allowed = () => !reviewOnlyMode && (dishOpen() || (!NO_SWIPE.includes(currentScreen) && !openOverlayEntry()));
     const touchOf = (e, id) => { for (const t of e.touches) if (t.identifier === id) return t; return null; };
     const pad = (el) => parseFloat(getComputedStyle(el).paddingTop) || 0;
 
+    // Карточка блюда: страницу не трогаем вообще, едет только окно блюда
+    function beginDish() {
+      const ov = document.getElementById('menuDetailOverlay');
+      if (!ov) return false;
+      S.ov = ov; S.screen = currentScreen; S.x = 0; S.under = [];
+      root.classList.add('swipe-on', 'swipe-ov');
+      ov.classList.add('swipe-ov-cur');
+      if (!shade) { shade = document.createElement('div'); shade.id = 'swipeShade'; document.body.appendChild(shade); }
+      shade.style.transition = 'none';
+      shade.style.opacity = String(SHADE);
+      return true;
+    }
+
     function begin() {
+      if (dishOpen()) return beginDish();
       const entry = navStack[navStack.length - 1] || { name: 'home', y: 0 };
       const curEl = document.getElementById('screen-' + currentScreen);
       const prevEl = document.getElementById('screen-' + entry.name);
@@ -2684,7 +2706,7 @@
       const w = window.innerWidth || 1;
       S.x = Math.max(0, Math.min(w, x));
       const p = S.x / w;
-      S.curEl.style.transform = 'translate3d(' + S.x + 'px,0,0)';
+      (S.ov || S.curEl).style.transform = 'translate3d(' + S.x + 'px,0,0)';
       const u = 'translate3d(' + (-PARALLAX * (1 - p)) + 'px,0,0)';
       for (const el of S.under) el.style.transform = u;
       if (shade) shade.style.opacity = String(SHADE * (1 - p));
@@ -2696,10 +2718,15 @@
     function cleanup(s, restore) {
       clearTimeout(timer);
       if (S === s) S = null;
-      root.classList.remove('swipe-on');
+      root.classList.remove('swipe-on', 'swipe-ov');
       if (typeof evFreeze === 'function') evFreeze(false);
       if (shade) { shade.style.transition = ''; shade.style.opacity = '0'; }
       if (!s) return;
+      if (s.ov) {
+        s.ov.classList.remove('swipe-ov-cur');
+        s.ov.style.transform = ''; s.ov.style.transition = '';
+        return;
+      }
       if (s.curEl) {
         s.curEl.classList.remove('swipe-cur');
         s.curEl.style.transform = ''; s.curEl.style.transition = ''; s.curEl.style.paddingTop = '';
@@ -2721,14 +2748,15 @@
       const w = window.innerWidth || 1, to = commit ? w : 0;
       const dur = reduced() ? 0 : Math.round(110 + 190 * Math.abs(to - s.x) / w);
       const u = 'translate3d(' + (commit ? 0 : -PARALLAX) + 'px,0,0)';
+      const cur = s.ov || s.curEl;
       if (dur) {
         const tr = 'transform ' + dur + 'ms cubic-bezier(.22,.7,.28,1)';
-        s.curEl.style.transition = tr;
+        cur.style.transition = tr;
         for (const el of s.under) el.style.transition = tr;
         shade.style.transition = 'opacity ' + dur + 'ms linear';
         if (s.line) s.line.style.transition = 'clip-path ' + dur + 'ms cubic-bezier(.22,.7,.28,1), -webkit-clip-path ' + dur + 'ms cubic-bezier(.22,.7,.28,1)';
       }
-      s.curEl.style.transform = 'translate3d(' + to + 'px,0,0)';
+      cur.style.transform = 'translate3d(' + to + 'px,0,0)';
       for (const el of s.under) el.style.transform = u;
       shade.style.opacity = commit ? '0' : String(SHADE);
       if (s.line) clipLine(s.line, to);
@@ -2736,7 +2764,7 @@
     }
     function done(s) {
       if (S !== s) return;
-      if (s.commit && currentScreen === s.screen && !openOverlayEntry()) {
+      if (s.commit && currentScreen === s.screen && (s.ov ? dishOpen() : !openOverlayEntry())) {
         // Сначала убираем всё лишнее, потом обычный «назад» — в одном кадре, без промежуточной картинки
         cleanup(s, false);
         goBack();
@@ -2778,7 +2806,8 @@
           if (!allowed() || !begin()) { S = null; return; }
           S.phase = 'drag'; S.base = dx;
         }
-        if (currentScreen !== S.screen || openOverlayEntry()) { cleanup(S, true); return; }   // пока тянули, экран сменился или открылось окно
+        // пока тянули, экран сменился или открылось (закрылось) окно
+        if (currentScreen !== S.screen || (S.ov ? !dishOpen() : !!openOverlayEntry())) { cleanup(S, true); return; }
         if (e.cancelable) e.preventDefault();
         S.pts.push({ x: t.clientX, t: e.timeStamp });
         if (S.pts.length > 8) S.pts.shift();
