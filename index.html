@@ -452,12 +452,12 @@
     @media (prefers-reduced-motion: reduce) { .cc-skel { animation: none; } }
     .cc-card-qr.wait { background: rgba(240,223,192,0.08); animation: ccSkel 1.4s ease-in-out infinite; }
     /* оборот карты: тянешь за правый край влево — карта разворачивается и показывает «Добро пожаловать домой» */
-    .cc-flip { perspective: 1200px; -webkit-perspective: 1200px; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; outline: none; border-radius: 22px; }
+    .cc-flip { position: relative; --cc-t: 3px; perspective: 1400px; -webkit-perspective: 1400px; touch-action: pan-y; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; outline: none; border-radius: 22px; }
     .cc-flip:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
     .cc-flip-in { position: relative; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform 0.75s cubic-bezier(0.25, 0.8, 0.25, 1); }
     .cc-flip-in.drag { transition: none; }
     .cc-flip .cc-face { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-    .cc-flip .cc-back { position: absolute; inset: 0; transform: rotateY(180deg); flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
+    .cc-flip .cc-back { position: absolute; inset: 0; transform: rotateY(180deg) translateZ(var(--cc-t)); flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
     .cc-back-t { font-family: 'Jost', 'Inter', sans-serif; font-size: clamp(14px, 4.6vw, 18px); font-weight: 500; letter-spacing: 0.22em; text-indent: 0.22em; line-height: 1.75; text-transform: uppercase; color: var(--lv, var(--accent)); }
     .cc-back-rule { width: 56px; height: 1px; background: currentColor; opacity: 0.5; color: var(--lv, var(--accent)); }
     .cc-card.lv-silver .cc-back-t, .cc-card.lv-silver .cc-back-rule { color: #3f4650; }
@@ -466,6 +466,44 @@
     .cc-flip-hint { margin: 10px 0 0; text-align: center; font-size: 11.5px; letter-spacing: 0.3px; color: var(--text-muted); transition: opacity 0.4s; }
     .cc-flip-hint.gone { opacity: 0; pointer-events: none; height: 0; margin: 0; overflow: hidden; }
     @media (prefers-reduced-motion: reduce) { .cc-flip-in { transition: none; } }
+    /* Глубина карты (как на сайте). Лицо и оборот разнесены по оси Z на толщину карты (--cc-t * 2 = 6px), между ними стопка
+       тонких срезов .cc-edge i: при повороте на ребро видна настоящая кромка цвета самой карты, свой у каждого уровня
+       (Bronze, Silver, Gold, Platinum; уровень ставит renderCardScreen в data-lv). Свет и тень считает скрипт по реальному
+       углу карты: блик ходит по лицу, грань темнеет к ребру, тень сужается и уезжает в сторону. */
+    .cc-flip { --e1l: #3a2a20; --e1m: #2c1b11; --e1d: #1d0f08; --e2l: #2f1f15; --e2m: #25150c; --e2d: #190c06; --e3l: #2a1a10; --e3m: #20120A; --e3d: #150a05; --e-hi: rgba(244,226,209,0.12); --e-lo: rgba(0,0,0,0.30); --gl1: rgba(255,236,214,0.12); --gl2: rgba(255,236,214,0.07); }
+    .cc-flip[data-lv="silver"] { --e1l: #e3e7ec; --e1m: #c9ced6; --e1d: #9ca3af; --e2l: #d3d8de; --e2m: #b9bfc8; --e2d: #8c93a0; --e3l: #c4cad2; --e3m: #a9b0ba; --e3d: #7e8693; --e-hi: rgba(255,255,255,0.45); --e-lo: rgba(40,46,58,0.28); --gl1: rgba(255,255,255,0.4); --gl2: rgba(255,255,255,0.22); }
+    .cc-flip[data-lv="gold"] { --e1l: #f1de9c; --e1m: #dfb64f; --e1d: #a97e26; --e2l: #e7cf84; --e2m: #d0a540; --e2d: #986f1f; --e3l: #dabf6e; --e3m: #c1963a; --e3d: #876619; --e-hi: rgba(255,248,220,0.5); --e-lo: rgba(70,44,6,0.3); --gl1: rgba(255,248,222,0.45); --gl2: rgba(255,248,222,0.24); }
+    .cc-flip[data-lv="platinum"] { --e1l: #4d5360; --e1m: #323843; --e1d: #1c1f26; --e2l: #414754; --e2m: #2b3039; --e2d: #181b21; --e3l: #363c48; --e3m: #252a32; --e3d: #14171c; --e-hi: rgba(244,246,252,0.2); --gl1: rgba(244,246,252,0.2); --gl2: rgba(244,246,252,0.1); }
+    .cc-tilt { position: relative; z-index: 1; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    .cc-flip .cc-card { box-shadow: none; }
+    .cc-flip .cc-card.lv-silver, .cc-flip .cc-card.lv-gold { box-shadow: inset 0 1px 0 rgba(255,255,255,0.55); }
+    .cc-flip .cc-card.lv-platinum { box-shadow: inset 0 1px 0 rgba(255,255,255,0.42); }
+    .cc-flip #cardView { transform: translateZ(var(--cc-t)); }
+    .cc-edge { position: absolute; inset: 0; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; pointer-events: none; }
+    .cc-edge i {
+      position: absolute; inset: 0; border-radius: 22px; transform: translateZ(var(--z));
+      background-image: linear-gradient(180deg, var(--e-hi) 0%, transparent 9%, transparent 91%, var(--e-lo) 100%),
+                        linear-gradient(90deg, var(--l) 0%, var(--m) 5%, var(--m) 95%, var(--d) 100%);
+    }
+    .cc-edge i:nth-child(1), .cc-edge i:nth-child(6) { --l: var(--e1l); --m: var(--e1m); --d: var(--e1d); }
+    .cc-edge i:nth-child(2), .cc-edge i:nth-child(5) { --l: var(--e2l); --m: var(--e2m); --d: var(--e2d); }
+    .cc-edge i:nth-child(3), .cc-edge i:nth-child(4) { --l: var(--e3l); --m: var(--e3m); --d: var(--e3d); }
+    .cc-gl {
+      position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      background-image: linear-gradient(104deg, transparent 26%, var(--gl1) 42%, var(--gl2) 52%, transparent 68%),
+                        linear-gradient(rgba(14,7,3,var(--cc-dim, 0)), rgba(14,7,3,var(--cc-dim, 0)));
+      background-size: 250% 100%, 100% 100%; background-repeat: no-repeat;
+      background-position: calc(var(--cc-g, 0.5) * 100%) 0, 0 0;
+    }
+    .cc-flip #cardView { --cc-g: var(--cc-gf, 0.5); --cc-dim: var(--cc-df, 0); }
+    .cc-flip .cc-back { --cc-g: var(--cc-gb, 0.5); --cc-dim: var(--cc-db, 0); }
+    .cc-shadow {
+      position: absolute; inset: 0; z-index: 0; border-radius: 22px; pointer-events: none;
+      background: rgba(0,0,0,0.62); filter: blur(23px); opacity: var(--cc-so, 1);
+      transform: translate3d(var(--cc-shx, 0px), 24px, 0) scale(0.97, 0.94) scaleX(var(--cc-sx, 1));
+    }
+    .cc-flip-hint, .cc-disc, .cc-card-note { position: relative; z-index: 1; }      /* тень карты ложится под подпись и скидку, не поверх */
+    @media (prefers-reduced-motion: reduce) { .cc-tilt { transition: none; } }
     .cc-offer { display: none; margin: 14px 0 0; padding: 14px 16px; border: 1px solid rgba(184,115,51,0.3); border-radius: 14px; background: var(--accent-dim); text-align: left; cursor: pointer; }
     .cc-offer .cc-kicker { margin-bottom: 5px; }
     .cc-offer-h { font-size: 15px; font-weight: 500; line-height: 1.25; color: var(--text); }
@@ -1682,7 +1720,10 @@
   <div class="sec" style="margin-top:14px">Ваша карта</div>
   <!-- Карту можно перевернуть свайпом (тянуть с правого края влево, работает и в другую сторону): на обороте — «Добро пожаловать домой» -->
   <div class="cc-flip" id="cardFlip" tabindex="0" role="button" aria-label="Карта гостя. Проведите по карте или нажмите Enter, чтобы перевернуть">
+    <div class="cc-shadow" aria-hidden="true"></div>
+    <div class="cc-tilt" id="cardTilt">
     <div class="cc-flip-in" id="cardFlipIn" data-flipped="false">
+      <div class="cc-edge" aria-hidden="true"><i style="--z:-2.5px"></i><i style="--z:-1.5px"></i><i style="--z:-0.5px"></i><i style="--z:0.5px"></i><i style="--z:1.5px"></i><i style="--z:2.5px"></i></div>
       <div class="cc-card cc-face" id="cardView" role="img" aria-label="Карта гостя «На Крыше», QR-код для кассы и бара">
         <div class="cc-card-body">
           <img class="cc-logo cc-card-mark" alt="">
@@ -1692,12 +1733,15 @@
           </div>
         </div>
         <div class="cc-card-qr" id="cardViewQr"></div>
+        <i class="cc-gl" aria-hidden="true"></i>
       </div>
       <div class="cc-card cc-face cc-back" id="cardBack" aria-hidden="true">
         <div class="cc-back-rule"></div>
         <div class="cc-back-t">Добро пожаловать<br>домой</div>
         <div class="cc-back-rule"></div>
+        <i class="cc-gl" aria-hidden="true"></i>
       </div>
+    </div>
     </div>
   </div>
   <div class="cc-flip-hint" id="cardFlipHint">Проведите по карте — она перевернётся</div>
@@ -4331,6 +4375,7 @@ function qrPlateSvg(text) {
     document.getElementById('cardViewDiscVal').textContent = cardDiscount() + '%';
     setLevelClass(disc, key);
     setLevelClass(document.getElementById('cardBack'), key);
+    const flipBox = document.getElementById('cardFlip'); if (flipBox) flipBox.dataset.lv = key;     // цвет ребра карты по уровню
     document.getElementById('cardView').setAttribute('aria-label', `Карта гостя «На Крыше», уровень ${CARD_LEVELS[key]}, QR-код для кассы и бара`);
   }
 
@@ -4344,7 +4389,46 @@ function qrPlateSvg(text) {
     try { cardFlip.seen = localStorage.getItem('nk_flip_seen') === '1'; } catch {}
     if (cardFlip.seen && hint) hint.classList.add('gone');
     const isBack = () => Math.round(cardFlip.rot / 180) % 2 !== 0;
-    const paint = (deg) => { inner.style.transform = 'rotateY(' + deg + 'deg)'; };
+    const tilt = document.getElementById('cardTilt');
+    const calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const RAD = Math.PI / 180, norm = (a) => ((a % 360) + 540) % 360 - 180;
+    const Matrix = window.DOMMatrix || window.WebKitCSSMatrix;
+    let ty = 0, raf = 0, until = 0;
+    // Свет и тень по углу карты: блик ходит по лицу, грань темнеет к ребру, тень сужается и уезжает в сторону
+    const light = (deg) => {
+      const a = norm(deg), f = a, b = norm(a - 180);
+      const pos = (x) => (0.5 - Math.max(-1, Math.min(1, x / 75)) * 0.36).toFixed(3);
+      const dim = (x) => Math.max(0, 0.6 * (1 - Math.cos(x * RAD))).toFixed(3);
+      inner.style.setProperty('--cc-gf', pos(f)); inner.style.setProperty('--cc-gb', pos(b));
+      inner.style.setProperty('--cc-df', dim(f)); inner.style.setProperty('--cc-db', dim(b));
+      const c = Math.abs(Math.cos(a * RAD));
+      wrap.style.setProperty('--cc-sx', Math.max(0.035, c).toFixed(3));
+      wrap.style.setProperty('--cc-shx', (Math.sin(a * RAD) * 18).toFixed(1) + 'px');
+      wrap.style.setProperty('--cc-so', (0.55 + 0.45 * c).toFixed(3));
+    };
+    // Пока карта едет по CSS-переходу, берём настоящий угол из её матрицы в каждом кадре, чтобы свет не отставал
+    const follow = () => {
+      raf = 0;
+      try {
+        const t = getComputedStyle(inner).transform;
+        const m = t && t !== 'none' && Matrix ? new Matrix(t) : null;
+        light((m ? Math.atan2(m.m31, m.m11) / RAD : 0) + ty);
+      } catch {}
+      if (performance.now() < until) raf = requestAnimationFrame(follow);
+    };
+    const paint = (deg) => {
+      inner.style.transform = 'rotateY(' + deg + 'deg)';
+      if (inner.classList.contains('drag')) { light(deg + ty); return; }   // тянем пальцем: переходов нет, угол известен
+      until = performance.now() + 900;
+      if (!raf) raf = requestAnimationFrame(follow);
+    };
+    // Лёгкий наклон под мышью (компьютер): карта «живая» и в покое, толщина и свет видны сразу
+    const setTilt = (nx, ny) => {
+      if (!tilt || calm) return;
+      ty = nx * 7;
+      tilt.style.transform = nx || ny ? 'rotateX(' + (-ny * 5).toFixed(2) + 'deg) rotateY(' + ty.toFixed(2) + 'deg)' : '';
+      if (!raf && !inner.classList.contains('drag')) light(cardFlip.rot + ty);
+    };
     const settle = () => {                       // после поворота приводим угол к 0 или 180, чтобы он не рос с каждым переворотом
       cardFlip.rot = ((Math.round(cardFlip.rot / 180) * 180) % 360 + 360) % 360;
       inner.classList.add('drag'); paint(cardFlip.rot); void inner.offsetWidth; inner.classList.remove('drag');
@@ -4364,12 +4448,17 @@ function qrPlateSvg(text) {
       cardFlip.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now(), moved: false, w: wrap.offsetWidth || 320, dx: 0 };
     });
     wrap.addEventListener('pointermove', (e) => {
-      const d = cardFlip.drag; if (!d || e.pointerId !== d.id) return;
+      const d = cardFlip.drag;
+      if (e.pointerType === 'mouse' && (!d || !d.moved)) {
+        const r = wrap.getBoundingClientRect();
+        setTilt(Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2)), Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2)));
+      }
+      if (!d || e.pointerId !== d.id) return;
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
       if (!d.moved) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
         if (Math.abs(dy) > Math.abs(dx)) { cardFlip.drag = null; return; }       // это прокрутка страницы
-        d.moved = true; settle(); inner.classList.add('drag'); try { wrap.setPointerCapture(e.pointerId); } catch {}
+        d.moved = true; setTilt(0, 0); settle(); inner.classList.add('drag'); try { wrap.setPointerCapture(e.pointerId); } catch {}
       }
       d.dx = dx;
       paint(cardFlip.rot + Math.max(-180, Math.min(180, -dx / d.w * 180)));
@@ -4386,12 +4475,14 @@ function qrPlateSvg(text) {
       paint(cardFlip.rot);
       if (!turn) settle();
     };
+    wrap.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') setTilt(0, 0); });
     wrap.addEventListener('pointerup', (e) => end(e, false));
     wrap.addEventListener('pointercancel', (e) => end(e, true));
     wrap.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault(); cardFlip.rot += 180; inner.classList.remove('drag'); paint(cardFlip.rot); mark();
     });
+    light(0);
   })();
 
   function openCardReg(source) {
