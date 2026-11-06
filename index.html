@@ -3958,6 +3958,8 @@
   // Init stories when screen opens
   const _origShowScreen = showScreen;
   showScreen = function(name, opts) {
+    // Карта сейчас не открыта этому гостю (запуск по этапам): ни экран карты, ни оформление не показываем
+    if ((name === 'card' || name === 'cardreg') && cardAccessClosed()) { name = 'home'; opts = undefined; }
     _origShowScreen(name, opts);
     if (name === 'bar' || name === 'vip') {
       renderStorySlides(name);
@@ -4207,7 +4209,7 @@
     } catch {}
   }
   function cardFromCache() {
-    if (!hasTelegramAuth() || reviewOnlyMode || cardState) return;
+    if (!hasTelegramAuth() || reviewOnlyMode || cardState || cardAccKnown() === false) return;
     try {
       const c = JSON.parse(localStorage.getItem(CARD_CACHE_KEY) || 'null');
       if (!c || c.uid !== cardCacheUid() || !c.card || !c.card.ready || !(Date.now() - c.at < 30 * 24 * 3600 * 1000)) return;
@@ -4215,14 +4217,42 @@
       renderHomeCard(); renderBookingCardOffer();
     } catch {}
   }
+  // Запуск карты по этапам: сервер может не открывать карту этому гостю (card.open === false). Тогда на главной, в оформлении после
+  // брони и в самом приложении про карту нет ни слова. Что карта открыта или закрыта, запоминается в телефоне: пока ответа нет,
+  // «Загружаем карту» показывается только тем, кому она была открыта, а остальные не видят мигания.
+  const CARD_ACC_KEY = 'nk_cardacc_v1';
+  function cardAccSave(open) {
+    try { const uid = cardCacheUid(); if (uid) localStorage.setItem(CARD_ACC_KEY, JSON.stringify({ uid, open: !!open, at: Date.now() })); } catch {}
+  }
+  // true — карта была открыта, false — закрыта, null — неизвестно (новый телефон)
+  function cardAccKnown() {
+    try {
+      const uid = cardCacheUid();
+      const a = JSON.parse(localStorage.getItem(CARD_ACC_KEY) || 'null');
+      if (a && a.uid === uid && typeof a.open === 'boolean' && Date.now() - a.at < 90 * 24 * 3600 * 1000) return a.open;
+      const c = JSON.parse(localStorage.getItem(CARD_CACHE_KEY) || 'null');   // карта у гостя уже была, запоминания ещё нет
+      if (c && c.uid === uid && c.card && c.card.ready) return true;
+    } catch {}
+    return null;
+  }
+  // Сервер уже ответил, и карта этому гостю закрыта
+  function cardAccessClosed() { return cardResolved && !cardState; }
   function applyCardState(card) {
     cardResolved = true;
-    cardState = (card && card.ready && hasTelegramAuth()) ? card : null;
+    cardState = (card && card.ready && card.open !== false && hasTelegramAuth()) ? card : null;
+    if (hasTelegramAuth()) cardAccSave(!!cardState);
     cardCacheSave();
     renderHomeCard();
     renderBookingCardOffer();
     if (currentScreen === 'card') renderCardScreen();
+    // Карту закрыли, пока гость был на её экране: возвращаем на главную, без закрытых экранов в истории «назад»
+    if (card && card.open === false && (currentScreen === 'card' || currentScreen === 'cardreg')) {
+      for (let i = navStack.length - 1; i >= 0; i--) if (navStack[i].name === 'card' || navStack[i].name === 'cardreg') navStack.splice(i, 1);
+      showScreen('home');
+    }
   }
+  // Сервер ответил на оформление или QR «карта закрыта» (её выключили, пока гость был в приложении)
+  function cardClosedNow() { applyCardState({ ready: false, open: false }); }
   function noteCard(me) {
     if (!me || typeof me !== 'object') return;
     if (me.bound) { cardName = me.name || cardName; cardPhone = me.phone || ''; cardBirthday = me.birthday || ''; }
@@ -4314,14 +4344,15 @@ function qrPlateSvg(text) {
     if (!promo || !strip) return;
     const on = !!cardState && !reviewOnlyMode;
     const skel = document.getElementById('homeCardSkel');
-    if (skel) skel.style.display = !cardState && !cardResolved && !reviewOnlyMode && hasTelegramAuth() && Date.now() - cardBoot < 8000 ? 'block' : 'none';
+    const wasOpen = cardAccKnown() === true;
+    if (skel) skel.style.display = wasOpen && !cardState && !cardResolved && !reviewOnlyMode && hasTelegramAuth() && Date.now() - cardBoot < 8000 ? 'block' : 'none';
     promo.style.display = on && !cardState.issued ? 'block' : 'none';
     strip.style.display = on && cardState.issued ? 'flex' : 'none';
     // Состояния карты нет и ответа так и не было (прошла заготовка): блок не исчезает, а остаётся с нейтральной надписью.
     // Причину гостю не показываем, она уходит нам (cardReport).
     const err = document.getElementById('homeCardErr');
     if (err) {
-      const failed = !cardState && !cardResolved && !reviewOnlyMode && hasTelegramAuth() && Date.now() - cardBoot >= 8000;
+      const failed = wasOpen && !cardState && !cardResolved && !reviewOnlyMode && hasTelegramAuth() && Date.now() - cardBoot >= 8000;
       err.style.display = failed ? 'flex' : 'none';
       if (failed) cardReport(cardFail || 'timeout');
     }
@@ -4367,6 +4398,10 @@ function qrPlateSvg(text) {
     let next = 15000;
     try {
       const res = await apiFetch('/api/card/qr', { method: 'POST', timeout: 8000 });
+      if (res.status === 403) {
+        let j = null; try { j = await res.json(); } catch {}
+        if (j && j.code === 'closed') { cardClosedNow(); return; }
+      }
       const d = res.ok ? await res.json() : null;
       if (d && d.code) {
         cardQr.code = d.code; cardQr.unsigned = false;
@@ -4515,6 +4550,7 @@ function qrPlateSvg(text) {
   })();
 
   function openCardReg(source) {
+    if (cardAccessClosed()) return;
     cardSource = source || 'app_home';
     showScreen(cardState && cardState.issued ? 'card' : 'cardreg');
   }
@@ -4643,6 +4679,7 @@ function qrPlateSvg(text) {
       if (!res.ok) {
         haptic('error');
         const code = data && data.code;
+        if (code === 'closed') { btn.disabled = false; btn.textContent = 'Оформить карту'; cardClosedNow(); return; }
         cardAlert(code === 'needs_verify' ? 'Подтвердите номер через Telegram'
           : code === 'consent_required' ? 'Нужно согласие на обработку персональных данных'
           : res.status === 503 ? 'Карта пока недоступна, попробуйте позже'
