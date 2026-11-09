@@ -373,6 +373,7 @@
     .cc-sub { font-size: 12.5px; line-height: 1.45; color: var(--text-muted); }
     .cc-cta { display: inline-flex; align-items: center; gap: 5px; margin-top: 14px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(184,115,51,0.3); border-radius: 100px; padding: 8px 14px; min-height: 36px; box-sizing: border-box; }
     .cc-promo { display: none; margin-top: 14px; margin-bottom: 10px; padding-right: 142px; min-height: 126px; }
+    .cc-promo.is-new { box-shadow: 0 0 0 1px rgba(184,115,51,0.5), 0 0 24px rgba(184,115,51,0.14); }
     .cc-promo::before { width: 65%; height: 90%; background: radial-gradient(circle, rgba(184,115,51,0.22) 0%, rgba(184,115,51,0.09) 40%, transparent 80%); }
     .cc-strip { display: none; align-items: center; gap: 14px; margin-top: 14px; margin-bottom: 10px; padding: 14px 16px; }
     .cc-strip::before { top: -30%; width: 60%; height: 140%; }
@@ -765,6 +766,11 @@
       transition: background 0.2s, transform 0.1s;
     }
     .btn-book:active { transform: scale(0.98); background: rgba(184,115,51,0.2); }
+    /* Оформление карты: пока номер не подтверждён, кнопка серая (нажатие объясняет почему), блок номера подсвечивается */
+    .btn-book.is-lock { background: rgba(240,223,192,0.05); color: var(--text-muted); border-color: rgba(240,223,192,0.10); }
+    .btn-book.is-lock:active { background: rgba(240,223,192,0.08); }
+    .cc-lock-hint { display: none; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; font-size: 12.5px; color: var(--text-muted); }
+    .verify-box.hl { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(184,115,51,0.22); }
 
     /* ABOUT / INFO */
     .about-hero {
@@ -1592,7 +1598,7 @@
   <div class="cc-skel" id="homeCardSkel" aria-hidden="true"></div>
   <div class="card cc-promo" id="homeCardPromo" onclick="openCardReg('app_home')" role="button" tabindex="0">
     <div>
-      <div class="cc-kicker">Карта гостя</div>
+      <div class="cc-kicker" id="homeCardKicker">Карта гостя</div>
       <h3 class="cc-h">Оформите за минуту</h3>
       <div class="cc-sub">Одна карта на все визиты</div>
       <span class="cc-cta">Оформить <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
@@ -1686,8 +1692,20 @@
     <input class="form-input" id="crName" type="text" placeholder="Как к вам обращаться" maxlength="100" autocomplete="given-name">
   </div>
 
+  <label class="form-label" for="crBirthDay">День рождения</label>
+  <div class="form-row form-group">
+    <select class="form-input" id="crBirthDay" aria-required="true"><option value="">День</option></select>
+    <select class="form-input" id="crBirthMonth" aria-required="true" aria-label="Месяц рождения"><option value="">Месяц</option></select>
+  </div>
+
+  <div class="cc-checks">
+    <div class="cc-check" id="crPd" role="checkbox" aria-checked="false" tabindex="0" onclick="cardToggle('pd')" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();cardToggle('pd')}"><span class="cc-box"></span><span>Согласен на обработку персональных данных<span id="crPolicy"></span></span></div>
+    <div class="cc-check" id="crMk" role="checkbox" aria-checked="false" tabindex="0" onclick="cardToggle('mk')" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();cardToggle('mk')}"><span class="cc-box"></span><span>Хочу получать предложения и новости от «На Крыше»</span></div>
+  </div>
+
+  <!-- Номер идёт последним шагом, прямо над кнопкой: пока он не подтверждён, «Оформить карту» серая и объясняет, почему -->
   <label class="form-label">Телефон</label>
-  <div id="crPhoneAsk" class="verify-box" style="margin-top:0">
+  <div id="crPhoneAsk" class="verify-box" style="margin:0 0 12px">
     <div class="verify-text" id="crPhoneAskText">Номер придёт от самого Telegram: ничего вводить и ждать SMS не нужно.</div>
     <button type="button" class="verify-btn" id="crVerifyBtn" onclick="cardVerifyPhone()">Подтвердить номер через Telegram</button>
   </div>
@@ -1696,27 +1714,15 @@
     <div><span id="crPhoneText"></span><small>Номер подтверждён</small></div>
   </div>
 
-  <div class="form-row form-group">
-    <div>
-      <label class="form-label" for="crBirthDay">День рождения</label>
-      <select class="form-input" id="crBirthDay"><option value="">День</option></select>
-    </div>
-    <div>
-      <label class="form-label" for="crBirthMonth">Необязательно</label>
-      <select class="form-input" id="crBirthMonth"><option value="">Месяц</option></select>
-    </div>
-  </div>
-
-  <div class="cc-checks">
-    <div class="cc-check" id="crPd" role="checkbox" aria-checked="false" tabindex="0" onclick="cardToggle('pd')" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();cardToggle('pd')}"><span class="cc-box"></span><span>Согласен на обработку персональных данных<span id="crPolicy"></span></span></div>
-    <div class="cc-check" id="crMk" role="checkbox" aria-checked="false" tabindex="0" onclick="cardToggle('mk')" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();cardToggle('mk')}"><span class="cc-box"></span><span>Хочу получать предложения и новости от «На Крыше»</span></div>
-  </div>
-
-  <div class="form-alert" id="crAlert">
+  <div class="form-alert" id="crAlert" role="alert">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12" y2="16.5"/></svg>
     <span id="crAlertText"></span>
   </div>
-  <button class="btn-book" id="crSubmit" onclick="cardSubmit()">Оформить карту</button>
+  <button class="btn-book is-lock" id="crSubmit" aria-disabled="true" onclick="cardSubmit()">Оформить карту</button>
+  <div class="cc-lock-hint" id="crLockHint">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    <span>Сначала подтвердите номер</span>
+  </div>
 </div>
 
 <!-- КАРТА ГОСТЯ -->
@@ -4347,6 +4353,11 @@ function qrPlateSvg(text) {
     const wasOpen = cardAccKnown() === true;
     if (skel) skel.style.display = wasOpen && !cardState && !cardResolved && !reviewOnlyMode && hasTelegramAuth() && Date.now() - cardBoot < 8000 ? 'block' : 'none';
     promo.style.display = on && !cardState.issued ? 'block' : 'none';
+    // Карта открыта приглашением (режим «По приглашению»): подсвечиваем, что она теперь доступна именно этому гостю
+    const invited = !!(on && !cardState.issued && cardState.invited);
+    promo.classList.toggle('is-new', invited);
+    const kick = document.getElementById('homeCardKicker');
+    if (kick) kick.textContent = invited ? 'Вам открыта карта' : 'Карта гостя';
     strip.style.display = on && cardState.issued ? 'flex' : 'none';
     // Состояния карты нет и ответа так и не было (прошла заготовка): блок не исчезает, а остаётся с нейтральной надписью.
     // Причину гостю не показываем, она уходит нам (cardReport).
@@ -4580,6 +4591,26 @@ function qrPlateSvg(text) {
       try { const d = ruPhoneNationalDigits(cardPhone); if (d.length === 10) shown = ruPhoneFormat(d); } catch {}
       document.getElementById('crPhoneText').textContent = shown;
     }
+    renderCardLock();
+  }
+
+  // Кнопка «Оформить карту» серая, пока номер не подтверждён; нажатие на неё объясняет почему (cardPhoneNudge)
+  function renderCardLock() {
+    const ok = !!(cardState && cardState.canIssue && cardPhone);
+    const btn = document.getElementById('crSubmit');
+    btn.classList.toggle('is-lock', !ok);
+    btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
+    document.getElementById('crLockHint').style.display = ok ? 'none' : 'flex';
+    if (ok) document.getElementById('crPhoneAsk').classList.remove('hl');
+  }
+
+  // Нажали «Оформить карту», а номер не подтверждён: уведомление над кнопкой и подсветка блока номера
+  function cardPhoneNudge() {
+    cardAlert('Подтвердите номер через Telegram — без него карту оформить нельзя');
+    const box = document.getElementById('crPhoneAsk');
+    box.classList.add('hl');
+    try { box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch {}
+    haptic('error');
   }
 
   // Открыли оформление: готовим форму, считаем заход в воронке (сервер учитывает гостя один раз в день на источник)
@@ -4598,6 +4629,7 @@ function qrPlateSvg(text) {
     const policy = document.getElementById('crPolicy');
     policy.innerHTML = PRIVACY_URL ? ' (<a href="' + escHtml(PRIVACY_URL) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">политика</a>)' : '';
     cardAlert('');
+    document.getElementById('crPhoneAsk').classList.remove('hl');
     renderCardPhone();
     document.getElementById('crSubmit').disabled = false;
     document.getElementById('crSubmit').textContent = 'Оформить карту';
@@ -4656,19 +4688,27 @@ function qrPlateSvg(text) {
     const btn = document.getElementById('crSubmit');
     if (btn.disabled) return;
     const name = document.getElementById('crName').value.trim();
+    // Серая кнопка значит «нет подтверждённого номера»: сначала объясняем это, а не другие поля
+    if (!cardState || !cardState.canIssue || !cardPhone) { cardPhoneNudge(); return; }
     if (!name) { cardAlert('Напишите, как к вам обращаться'); haptic('error'); return; }
-    if (!cardState || !cardState.canIssue) { cardAlert('Подтвердите номер через Telegram'); haptic('error'); return; }
+    const day = document.getElementById('crBirthDay').value, month = document.getElementById('crBirthMonth').value;
+    // День рождения обязателен (09.11.2026): день и месяц, год не нужен
+    if (!day || !month) { cardAlert(day ? 'Укажите месяц рождения' : month ? 'Укажите день рождения' : 'Укажите день и месяц рождения'); haptic('error'); return; }
+    if (Number(day) > [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][Number(month) - 1]) { cardAlert('В этом месяце нет такого дня'); haptic('error'); return; }
     if (!cardChecks.pd) { cardAlert('Нужно согласие на обработку персональных данных'); haptic('error'); return; }
     cardAlert('');
     btn.disabled = true;
     btn.textContent = 'Оформляем...';
     try {
-      // имя и день рождения, если гость их поменял или добавил, сохраняем в профиль (пустой день рождения старое не стирает)
-      const day = document.getElementById('crBirthDay').value, month = document.getElementById('crBirthMonth').value;
-      const birthday = day && month ? '2000-' + month + '-' + day : '';
-      if (cardPhone && ((name && name !== cardName) || (birthday && birthday !== cardBirthday))) {
+      // имя и день рождения, если гость их поменял или добавил, сохраняем в профиль
+      const birthday = '2000-' + month + '-' + day;
+      if (cardPhone && ((name && name !== cardName) || birthday !== cardBirthday)) {
         try {
-          await apiFetch('/api/profile', { method: 'POST', body: JSON.stringify({ phone: cardPhone, name: name !== cardName ? name : '', birthday }) });
+          const pr = await apiFetch('/api/profile', { method: 'POST', body: JSON.stringify({ phone: cardPhone, name: name !== cardName ? name : '', birthday }) });
+          if (!pr.ok) {
+            let pj = null; try { pj = await pr.json(); } catch {}
+            if (pj && pj.field === 'birthday') { haptic('error'); cardAlert(pj.error || 'Проверьте день рождения'); btn.disabled = false; btn.textContent = 'Оформить карту'; return; }
+          }
         } catch {}
       }
       const res = await apiFetch('/api/card', {
@@ -4680,11 +4720,12 @@ function qrPlateSvg(text) {
         haptic('error');
         const code = data && data.code;
         if (code === 'closed') { btn.disabled = false; btn.textContent = 'Оформить карту'; cardClosedNow(); return; }
-        cardAlert(code === 'needs_verify' ? 'Подтвердите номер через Telegram'
+        cardAlert(code === 'needs_verify' ? 'Подтвердите номер через Telegram — без него карту оформить нельзя'
+          : code === 'needs_birthday' ? 'Укажите день и месяц рождения'
           : code === 'consent_required' ? 'Нужно согласие на обработку персональных данных'
           : res.status === 503 ? 'Карта пока недоступна, попробуйте позже'
           : 'Не получилось оформить карту. Попробуйте ещё раз');
-        if (code === 'needs_verify' && cardState) { cardState.canIssue = false; renderCardPhone(); }
+        if (code === 'needs_verify' && cardState) { cardState.canIssue = false; renderCardPhone(); document.getElementById('crPhoneAsk').classList.add('hl'); }
         btn.disabled = false;
         btn.textContent = 'Оформить карту';
         return;
