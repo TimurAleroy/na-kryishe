@@ -1558,13 +1558,13 @@
   <div class="form-row form-group">
     <div>
       <label class="form-label">День рождения</label>
-      <select class="form-input" id="pBirthDay">
+      <select class="form-input" id="pBirthDay" aria-required="true">
         <option value="">День</option>
       </select>
     </div>
     <div>
       <label class="form-label">&nbsp;</label>
-      <select class="form-input" id="pBirthMonth">
+      <select class="form-input" id="pBirthMonth" aria-required="true" aria-label="Месяц рождения">
         <option value="">Месяц</option>
         <option value="01">Январь</option>
         <option value="02">Февраль</option>
@@ -4196,6 +4196,7 @@
   const PRIVACY_URL = '';   // ссылка на политику обработки персональных данных; пока пусто — согласие без ссылки (текст ждёт юриста)
   let cardState = null;     // последнее, что сообщил сервер: { ready, issued, canIssue, number, level, discount }
   let cardName = '', cardPhone = '', cardBirthday = '';
+  let cardNameEdited = false;   // гость сам менял поле «Имя» в форме оформления (подставленное из Telegram не считается)
   let cardBoot = Date.now();
   let cardFail = '';           // чем кончился последний запрос карты: код ответа сервера, «timeout» или «net». Гостю не показывается, уходит только нам (cardReport)
   let cardRetryN = 0, cardRetryTimer = 0;
@@ -4245,6 +4246,7 @@
   function cardAccessClosed() { return cardResolved && !cardState; }
   function applyCardState(card) {
     cardResolved = true;
+    if (card && typeof card.holder === 'string' && card.holder) cardName = card.holder;   // имя из системы приходит вместе с картой
     cardState = (card && card.ready && card.open !== false && hasTelegramAuth()) ? card : null;
     if (hasTelegramAuth()) cardAccSave(!!cardState);
     cardCacheSave();
@@ -4433,8 +4435,8 @@ function qrPlateSvg(text) {
 
   function renderCardScreen() {
     if (!cardState || !cardState.issued) return;
-    const user = getTelegramUser();
-    document.getElementById('cardViewName').textContent = cardName || (user ? [user.first_name, user.last_name].filter(Boolean).join(' ') : '') || 'Гость';
+    // Имя на карте — из системы (его записали в карточку гостя), не из Telegram: у гостя они могут отличаться
+    document.getElementById('cardViewName').textContent = (cardState && cardState.holder) || cardName || 'Гость';
     // Действующий код (из телефона или с сервера) рисуется сразу. Нет кода — заготовка, пока он не придёт; если сервер
     // подписывать не умеет, остаётся прежний QR с номером.
     cardQrLoad();
@@ -4617,7 +4619,9 @@ function qrPlateSvg(text) {
   function initCardReg() {
     setCardLogos();
     const nameField = document.getElementById('crName');
+    if (!nameField.__nk) { nameField.__nk = true; nameField.addEventListener('input', () => { cardNameEdited = true; }); }
     if (!nameField.value) {
+      cardNameEdited = false;
       const saved = getSavedProfile();
       const user = getTelegramUser();
       nameField.value = cardName || (saved && saved.name) || (user ? [user.first_name, user.last_name].filter(Boolean).join(' ') : '');
@@ -4673,6 +4677,9 @@ function qrPlateSvg(text) {
         const me = await res.json();
         haptic('success');
         applyMe(me);
+        // Гость уже есть в системе под своим именем, а в поле подставлено имя из Telegram, которое он не менял: показываем системное
+        const nf = document.getElementById('crName');
+        if (nf && !cardNameEdited && cardName) nf.value = cardName;
         cardAlert('');
         renderCardPhone();
       } catch {
@@ -4702,9 +4709,11 @@ function qrPlateSvg(text) {
     try {
       // имя и день рождения, если гость их поменял или добавил, сохраняем в профиль
       const birthday = '2000-' + month + '-' + day;
-      if (cardPhone && ((name && name !== cardName) || birthday !== cardBirthday)) {
+      // Имя из Telegram, подставленное в поле, системное имя не затирает: в профиль оно уходит, только если гость сам его поменял
+      const nameChanged = cardNameEdited && !!name && name !== cardName;
+      if (cardPhone && (nameChanged || birthday !== cardBirthday)) {
         try {
-          const pr = await apiFetch('/api/profile', { method: 'POST', body: JSON.stringify({ phone: cardPhone, name: name !== cardName ? name : '', birthday }) });
+          const pr = await apiFetch('/api/profile', { method: 'POST', body: JSON.stringify({ phone: cardPhone, name: nameChanged ? name : '', birthday }) });
           if (!pr.ok) {
             let pj = null; try { pj = await pr.json(); } catch {}
             if (pj && pj.field === 'birthday') { haptic('error'); cardAlert(pj.error || 'Проверьте день рождения'); btn.disabled = false; btn.textContent = 'Оформить карту'; return; }
@@ -4881,6 +4890,8 @@ function qrPlateSvg(text) {
   }
   function clearProfileErrors() {
     document.getElementById('pPhone').classList.remove('field-invalid');
+    document.getElementById('pBirthDay').classList.remove('field-invalid');
+    document.getElementById('pBirthMonth').classList.remove('field-invalid');
     document.getElementById('pPhoneError').style.display = 'none';
     document.getElementById('profileAlert').style.display = 'none';
   }
@@ -4903,15 +4914,18 @@ function qrPlateSvg(text) {
       return;
     }
 
-    // День рождения: либо день и месяц вместе, либо оба пустые. Раньше при выборе только одного дата молча не сохранялась,
-    // а гость видел «Профиль сохранён»; 31 февраля тоже принималось.
-    if ((day && !month) || (!day && month)) {
+    // День рождения обязателен (10.11.2026): день и месяц, год не нужен — так же, как при оформлении карты.
+    // Чтобы снова сделать его необязательным: вместо этой проверки разрешить «оба поля пустые» (день и месяц только вместе).
+    if (!day || !month) {
       haptic('warning');
-      showProfileError('Выберите и день, и месяц рождения — или оставьте оба поля пустыми');
+      if (!day) document.getElementById('pBirthDay').classList.add('field-invalid');
+      if (!month) document.getElementById('pBirthMonth').classList.add('field-invalid');
+      showProfileError(day ? 'Укажите месяц рождения' : month ? 'Укажите день рождения' : 'Укажите день и месяц рождения');
       return;
     }
-    if (day && month && Number(day) > new Date(Date.UTC(2000, Number(month), 0)).getUTCDate()) {
+    if (Number(day) > new Date(Date.UTC(2000, Number(month), 0)).getUTCDate()) {
       haptic('warning');
+      document.getElementById('pBirthDay').classList.add('field-invalid');
       showProfileError('В этом месяце нет такого числа — проверьте день рождения');
       return;
     }
