@@ -892,11 +892,7 @@
       color: var(--text-sub);
     }
 
-    /* «Мои брони»: уровень карты шкалой XP (только шкала, без баллов и сумм) и пустое состояние с крестом тонкой линией */
-    .xp-card { margin: 0 0 22px; padding: 14px 16px 16px; border-radius: 16px; text-align: left; background: rgba(240,223,192,0.035); border: 1px solid rgba(240,223,192,0.12); }
-    .xp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .xp-kick { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
-    .xp-pill { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(184,115,51,0.4); border-radius: 100px; padding: 4px 10px; }
+    /* Шкала XP (только шкала, без баллов и сумм) и пустое состояние «Мои брони» с крестом тонкой линией */
     .xp-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
     .xp-lab { flex-shrink: 0; font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 2px; color: #CD8C4F; }
     .xp-wrap { position: relative; flex: 1; min-width: 0; height: 10px; }
@@ -5114,7 +5110,7 @@ function qrPlateSvg(text) {
   // Уровень карты над бронями: метка «Карта гостя», уровень и шкала XP. Гость видит только шкалу: ни баллов, ни сумм, ни «осталось до…».
   // Доля приходит от сервера (card.progress, 0–100); нет её (прежний сервер) — блока нет совсем.
   // Шкала XP: метка и полоса с делениями по 10 %. Доля приходит от сервера (card.progress, 0–100); нет её (прежний сервер),
-  // null или строка — это не доля (Number(null) дал бы 0 %), шкалы нет совсем. Рисуется в «Мои брони» и в полосе «Карта гостя» на главной.
+  // null или строка — это не доля (Number(null) дал бы 0 %), шкалы нет совсем. Рисуется в полосе «Карта гостя» на главной.
   function xpPct(card) {
     const p = card && card.progress;
     return typeof p === 'number' && Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : null;
@@ -5133,26 +5129,6 @@ function qrPlateSvg(text) {
   // Шкала заполняется после показа (плавно, при «уменьшении движения» сразу)
   const xpGrow = (w, pct) => requestAnimationFrame(() => requestAnimationFrame(() => xpSet(w, pct)));
 
-  let statusLevel = '';
-  function statusLevelHtml(card) {
-    if (!card || !card.issued) return '';
-    const pct = xpPct(card);
-    if (pct === null) return '';
-    const key = CARD_LEVELS[card.level] ? card.level : 'bronze';
-    return `<div class="xp-card">
-      <div class="xp-head"><span class="xp-kick">Карта гостя</span><span class="xp-pill">${escHtml(CARD_LEVELS[key])}</span></div>
-      ${xpRowHtml(pct)}
-    </div>`;
-  }
-  let xpShown = false;   // шкала уже заполнялась при этом открытии: после «Опаздываю» и т. п. рисуем сразу готовой, без повторного разгона
-  function xpAnimate() {
-    const w = document.querySelector('#bookingStatusContent .xp-wrap');
-    if (!w) return;
-    const pct = Number(w.dataset.pct) || 0;
-    if (xpShown) { xpSet(w, pct); return; }
-    xpShown = true;
-    xpGrow(w, pct);
-  }
   // Полоса «Карта гостя» на главной: шкала строится один раз (разгоняется при первом показе), дальше только меняется заливка
   function renderHomeXp() {
     const box = document.getElementById('homeCardXp');
@@ -5196,7 +5172,6 @@ function qrPlateSvg(text) {
     const overlay = document.getElementById('bookingStatusOverlay');
     overlay.classList.add('show');
     lateArmed = null;
-    statusLevel = ''; xpShown = false;
 
     if (!hasTelegramAuth()) {
       statusMessage('Статус брони виден в приложении внутри Telegram.<br>Подтверждение также придёт от администратора.');
@@ -5212,7 +5187,6 @@ function qrPlateSvg(text) {
       return;
     }
     updateBookingDotFrom(me);
-    statusLevel = statusLevelHtml(me.card && me.card.issued ? me.card : cardState);
     if (!me.bound) {
       document.getElementById('bookingStatusContent').innerHTML = `<div style="${STATUS_MSG_STYLE}">Пока не видим ваших броней.<br>Если вы бронировали на другой номер или по телефону — подтвердите номер в профиле.</div>
         <button onclick="closeBookingStatus();openProfile();" style="${STATUS_BTN_STYLE}margin-top:18px;color:var(--accent);border-color:rgba(184,115,51,0.4);">Открыть профиль</button>
@@ -5221,14 +5195,13 @@ function qrPlateSvg(text) {
     }
     statusList = me.active || [];
     if (!statusList.length) {
-      document.getElementById('bookingStatusContent').innerHTML = `${statusLevel}
+      document.getElementById('bookingStatusContent').innerHTML = `
         <div class="st-empty">${CROSS_THIN_HTML}
           <h2 class="st-empty-t">Броней пока нет</h2>
           <p class="st-empty-s">Выберите стол, и он будет ждать вас.</p>
           <button type="button" class="st-empty-btn" onclick="closeBookingStatus();resetAndShowBook()">Забронировать стол</button>
         </div>
         <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}margin-top:16px;">Закрыть</button>`;
-      xpAnimate();
       return;
     }
     renderStatusCards();
@@ -5278,9 +5251,8 @@ function qrPlateSvg(text) {
     }).join('');
 
     document.getElementById('bookingStatusContent').innerHTML =
-      `${statusLevel}<div class="sec" style="margin:0 0 12px;text-align:left;">Ваши брони</div>${cardsHtml}
+      `<div class="sec" style="margin:0 0 12px;text-align:left;">Ваши брони</div>${cardsHtml}
        <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}">Закрыть</button>`;
-    xpAnimate();
   }
 
   const lateInProgress = new Set();
