@@ -375,9 +375,12 @@
     .cc-promo { display: none; margin-top: 14px; margin-bottom: 10px; padding-right: 142px; min-height: 126px; }
     .cc-promo.is-new { box-shadow: 0 0 0 1px rgba(184,115,51,0.5), 0 0 24px rgba(184,115,51,0.14); }
     .cc-promo::before { width: 65%; height: 90%; background: radial-gradient(circle, rgba(184,115,51,0.22) 0%, rgba(184,115,51,0.09) 40%, transparent 80%); }
-    .cc-strip { display: none; align-items: center; gap: 14px; margin-top: 14px; margin-bottom: 10px; padding: 14px 16px; }
+    .cc-strip { display: none; flex-wrap: wrap; align-items: center; gap: 0 14px; margin-top: 14px; margin-bottom: 10px; padding: 14px 16px; }
     .cc-strip::before { top: -30%; width: 60%; height: 140%; }
     .cc-strip-text { flex: 1; min-width: 0; }
+    /* шкала XP на главной: вторая строка полосы «Карта гостя», только шкала (без баллов и сумм) */
+    .cc-xp { display: none; flex: 0 0 100%; }
+    .cc-xp .xp-row { margin-top: 14px; }
     .cc-strip .cc-kicker { margin-bottom: 5px; }
     .cc-strip .cc-sub { margin-top: 6px; font-size: 12px; }
     /* сервер не отдал карту: строка с причиной и повтором вместо молчаливого исчезновения блока */
@@ -888,6 +891,34 @@
       line-height: 1.5;
       color: var(--text-sub);
     }
+
+    /* «Мои брони»: уровень карты шкалой XP (только шкала, без баллов и сумм) и пустое состояние с крестом тонкой линией */
+    .xp-card { margin: 0 0 22px; padding: 14px 16px 16px; border-radius: 16px; text-align: left; background: rgba(240,223,192,0.035); border: 1px solid rgba(240,223,192,0.12); }
+    .xp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .xp-kick { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+    .xp-pill { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(184,115,51,0.4); border-radius: 100px; padding: 4px 10px; }
+    .xp-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+    .xp-lab { flex-shrink: 0; font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 2px; color: #CD8C4F; }
+    .xp-wrap { position: relative; flex: 1; min-width: 0; height: 10px; }
+    .xp-glow { position: absolute; left: 0; top: 0; height: 10px; width: 0; border-radius: 100px; background: var(--accent); filter: blur(7px); opacity: 0.45; transition: width 0.9s cubic-bezier(0.2,0.7,0.2,1); }
+    /* деления по 10 %: полоса режется маской, поэтому щели прозрачны и не зависят от цвета подложки */
+    .xp-bar { position: absolute; left: 0; top: 0; right: 0; height: 10px; border-radius: 100px; overflow: hidden; background: rgba(240,223,192,0.08);
+      -webkit-mask-image: repeating-linear-gradient(90deg, #000 0, #000 calc(10% - 2px), transparent calc(10% - 2px), transparent 10%);
+              mask-image: repeating-linear-gradient(90deg, #000 0, #000 calc(10% - 2px), transparent calc(10% - 2px), transparent 10%); }
+    .xp-fill { position: absolute; left: 0; top: 0; height: 10px; width: 0; background: linear-gradient(90deg,#A6672E 0%,#B87333 55%,#CD8C4F 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.14); transition: width 0.9s cubic-bezier(0.2,0.7,0.2,1); }
+    .xp-spark { position: absolute; top: 50%; left: 0; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #F4E2D1; box-shadow: 0 0 8px rgba(255,190,120,0.9); opacity: 0; transition: left 0.9s cubic-bezier(0.2,0.7,0.2,1), opacity 0.3s ease 0.5s; }
+    .xp-spark.on { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) { .xp-glow, .xp-fill, .xp-spark { transition: none; } }
+
+    .st-empty { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .st-cross { position: relative; width: 72px; height: 84px; --cl: #FFB36B; --cf: rgba(255,179,107,0.13); --cg: rgba(255,179,107,0.75); --cs: rgba(255,179,107,0.32); }
+    .st-cross > div { position: absolute; left: 0; top: 0; width: 72px; height: 84px; pointer-events: none; }
+    .st-cross i { position: absolute; display: block; }
+    .st-cross .lines { filter: drop-shadow(0 0 2px var(--cg)) drop-shadow(0 0 9px var(--cs)); }
+    .st-empty-t { margin: 24px 0 0; font-family: 'Jost', sans-serif; font-size: 24px; font-weight: 500; line-height: 1.2; color: var(--text); }
+    .st-empty-s { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
+    .st-empty-btn { margin-top: 24px; min-height: 52px; padding: 0 32px; border-radius: 14px; border: 1px solid var(--accent); background: var(--accent); color: #100906; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; cursor: pointer; }
+    .st-empty-btn:active { transform: scale(0.98); }
 
     /* HISTORY */
     .history-summary {
@@ -1613,6 +1644,7 @@
       <div class="cc-sub" id="homeCardSub">Нажмите, чтобы показать QR</div>
     </div>
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="9 6 15 12 9 18"/></svg>
+    <div class="cc-xp" id="homeCardXp"></div>
   </div>
   <div class="card cc-strip cc-err" id="homeCardErr" onclick="cardRetryNow()" role="button" tabindex="0" aria-label="Карта гостя, нажмите, чтобы обновить">
     <div class="cc-strip-text">
@@ -4194,7 +4226,7 @@
   // ещё без таблиц карт — блоков на главной нет, ничего не ломается. Оформить карту можно только с номером, подтверждённым
   // через Telegram, и с согласием на обработку персональных данных (сервер проверяет оба условия, здесь только подсказки).
   const PRIVACY_URL = '';   // ссылка на политику обработки персональных данных; пока пусто — согласие без ссылки (текст ждёт юриста)
-  let cardState = null;     // последнее, что сообщил сервер: { ready, issued, canIssue, number, level, discount }
+  let cardState = null;     // последнее, что сообщил сервер: { ready, issued, canIssue, number, level, discount, progress }
   let cardName = '', cardPhone = '', cardBirthday = '';
   let cardNameEdited = false;   // гость сам менял поле «Имя» в форме оформления (подставленное из Telegram не считается)
   let cardBoot = Date.now();
@@ -4212,7 +4244,7 @@
     try {
       const uid = cardCacheUid();
       if (!cardState || !uid) { localStorage.removeItem(CARD_CACHE_KEY); return; }
-      localStorage.setItem(CARD_CACHE_KEY, JSON.stringify({ uid, at: Date.now(), card: { ready: true, issued: !!cardState.issued, canIssue: !!cardState.canIssue, level: cardState.level || 'bronze', discount: Number(cardState.discount) || 0 } }));
+      localStorage.setItem(CARD_CACHE_KEY, JSON.stringify({ uid, at: Date.now(), card: { ready: true, issued: !!cardState.issued, canIssue: !!cardState.canIssue, level: cardState.level || 'bronze', discount: Number(cardState.discount) || 0, progress: typeof cardState.progress === 'number' && Number.isFinite(cardState.progress) ? cardState.progress : undefined } }));
     } catch {}
   }
   function cardFromCache() {
@@ -4376,6 +4408,7 @@ function qrPlateSvg(text) {
       const sub = document.getElementById('homeCardSub');
       if (sub) sub.textContent = cardDiscount() ? `Скидка ${cardDiscount()}% · нажмите, чтобы показать QR` : 'Нажмите, чтобы показать QR';
     }
+    renderHomeXp();
   }
 
   function renderBookingCardOffer() {
@@ -5078,6 +5111,77 @@ function qrPlateSvg(text) {
     if (me) updateBookingDotFrom(me);
   }
 
+  // Уровень карты над бронями: метка «Карта гостя», уровень и шкала XP. Гость видит только шкалу: ни баллов, ни сумм, ни «осталось до…».
+  // Доля приходит от сервера (card.progress, 0–100); нет её (прежний сервер) — блока нет совсем.
+  // Шкала XP: метка и полоса с делениями по 10 %. Доля приходит от сервера (card.progress, 0–100); нет её (прежний сервер),
+  // null или строка — это не доля (Number(null) дал бы 0 %), шкалы нет совсем. Рисуется в «Мои брони» и в полосе «Карта гостя» на главной.
+  function xpPct(card) {
+    const p = card && card.progress;
+    return typeof p === 'number' && Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : null;
+  }
+  const xpRowHtml = (pct) => `<div class="xp-row"><span class="xp-lab" aria-hidden="true">XP</span>
+      <div class="xp-wrap" role="progressbar" aria-label="Прогресс до следующего уровня" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" data-pct="${pct}">
+        <i class="xp-glow"></i><div class="xp-bar"><i class="xp-fill"></i></div><i class="xp-spark"></i>
+      </div></div>`;
+  function xpSet(w, pct) {
+    const fill = w.querySelector('.xp-fill'), glow = w.querySelector('.xp-glow'), spark = w.querySelector('.xp-spark');
+    w.dataset.pct = String(pct); w.setAttribute('aria-valuenow', String(pct));
+    if (fill) fill.style.width = pct + '%';
+    if (glow) glow.style.width = pct + '%';
+    if (spark) { spark.style.left = pct + '%'; spark.classList.toggle('on', pct > 0); }
+  }
+  // Шкала заполняется после показа (плавно, при «уменьшении движения» сразу)
+  const xpGrow = (w, pct) => requestAnimationFrame(() => requestAnimationFrame(() => xpSet(w, pct)));
+
+  let statusLevel = '';
+  function statusLevelHtml(card) {
+    if (!card || !card.issued) return '';
+    const pct = xpPct(card);
+    if (pct === null) return '';
+    const key = CARD_LEVELS[card.level] ? card.level : 'bronze';
+    return `<div class="xp-card">
+      <div class="xp-head"><span class="xp-kick">Карта гостя</span><span class="xp-pill">${escHtml(CARD_LEVELS[key])}</span></div>
+      ${xpRowHtml(pct)}
+    </div>`;
+  }
+  let xpShown = false;   // шкала уже заполнялась при этом открытии: после «Опаздываю» и т. п. рисуем сразу готовой, без повторного разгона
+  function xpAnimate() {
+    const w = document.querySelector('#bookingStatusContent .xp-wrap');
+    if (!w) return;
+    const pct = Number(w.dataset.pct) || 0;
+    if (xpShown) { xpSet(w, pct); return; }
+    xpShown = true;
+    xpGrow(w, pct);
+  }
+  // Полоса «Карта гостя» на главной: шкала строится один раз (разгоняется при первом показе), дальше только меняется заливка
+  function renderHomeXp() {
+    const box = document.getElementById('homeCardXp');
+    if (!box) return;
+    const pct = cardState && cardState.issued ? xpPct(cardState) : null;
+    if (pct === null) { box.style.display = 'none'; box.textContent = ''; return; }
+    box.style.display = 'block';
+    let w = box.querySelector('.xp-wrap');
+    if (w) { xpSet(w, pct); return; }
+    box.innerHTML = xpRowHtml(pct);
+    xpGrow(box.querySelector('.xp-wrap'), pct);
+  }
+  // Крест тонкой линией: контур щели между четырьмя панелями, по краям тёплый свет (неподвижный)
+  const CROSS_THIN_HTML = `<div class="st-cross" aria-hidden="true"><div>
+      <i style="left:41px;top:0;width:6px;height:33px;background:linear-gradient(180deg,rgba(0,0,0,0) 0,var(--cf) 26px,var(--cf) 100%)"></i>
+      <i style="left:41px;top:33px;width:6px;height:51px;background:linear-gradient(180deg,var(--cf) 0,var(--cf) calc(100% - 34px),rgba(0,0,0,0) 100%)"></i>
+      <i style="left:0;top:27px;width:41px;height:6px;background:linear-gradient(90deg,rgba(0,0,0,0) 0,var(--cf) 26px,var(--cf) 100%)"></i>
+      <i style="left:47px;top:27px;width:25px;height:6px;background:linear-gradient(90deg,var(--cf) 0,var(--cf) calc(100% - 26px),rgba(0,0,0,0) 100%)"></i>
+      <div class="lines">
+        <i style="left:40px;top:0;width:1px;height:27px;background:linear-gradient(180deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
+        <i style="left:47px;top:0;width:1px;height:27px;background:linear-gradient(180deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
+        <i style="left:0;top:26px;width:41px;height:1px;background:linear-gradient(90deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
+        <i style="left:47px;top:26px;width:25px;height:1px;background:linear-gradient(90deg,var(--cl) 0,var(--cl) calc(100% - 26px),rgba(0,0,0,0) 100%)"></i>
+        <i style="left:0;top:33px;width:41px;height:1px;background:linear-gradient(90deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
+        <i style="left:47px;top:33px;width:25px;height:1px;background:linear-gradient(90deg,var(--cl) 0,var(--cl) calc(100% - 26px),rgba(0,0,0,0) 100%)"></i>
+        <i style="left:40px;top:33px;width:1px;height:51px;background:linear-gradient(180deg,var(--cl) 0,var(--cl) calc(100% - 34px),rgba(0,0,0,0) 100%)"></i>
+        <i style="left:47px;top:33px;width:1px;height:51px;background:linear-gradient(180deg,var(--cl) 0,var(--cl) calc(100% - 34px),rgba(0,0,0,0) 100%)"></i>
+      </div></div></div>`;
+
   const STATUS_MSG_STYLE = 'text-align:center;color:var(--text-muted);font-size:13px;line-height:1.5;';
   const STATUS_BTN_STYLE = "width:100%;margin-top:8px;background:none;border:1px solid var(--border);border-radius:100px;padding:11px 14px;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-muted);cursor:pointer;font-family:'Inter',sans-serif;";
   let statusList = [];
@@ -5092,6 +5196,7 @@ function qrPlateSvg(text) {
     const overlay = document.getElementById('bookingStatusOverlay');
     overlay.classList.add('show');
     lateArmed = null;
+    statusLevel = ''; xpShown = false;
 
     if (!hasTelegramAuth()) {
       statusMessage('Статус брони виден в приложении внутри Telegram.<br>Подтверждение также придёт от администратора.');
@@ -5107,6 +5212,7 @@ function qrPlateSvg(text) {
       return;
     }
     updateBookingDotFrom(me);
+    statusLevel = statusLevelHtml(me.card && me.card.issued ? me.card : cardState);
     if (!me.bound) {
       document.getElementById('bookingStatusContent').innerHTML = `<div style="${STATUS_MSG_STYLE}">Пока не видим ваших броней.<br>Если вы бронировали на другой номер или по телефону — подтвердите номер в профиле.</div>
         <button onclick="closeBookingStatus();openProfile();" style="${STATUS_BTN_STYLE}margin-top:18px;color:var(--accent);border-color:rgba(184,115,51,0.4);">Открыть профиль</button>
@@ -5115,7 +5221,14 @@ function qrPlateSvg(text) {
     }
     statusList = me.active || [];
     if (!statusList.length) {
-      statusMessage('У вас пока нет активных броней.<br>Забронируйте стол — статус появится здесь.');
+      document.getElementById('bookingStatusContent').innerHTML = `${statusLevel}
+        <div class="st-empty">${CROSS_THIN_HTML}
+          <h2 class="st-empty-t">Броней пока нет</h2>
+          <p class="st-empty-s">Выберите стол, и он будет ждать вас.</p>
+          <button type="button" class="st-empty-btn" onclick="closeBookingStatus();resetAndShowBook()">Забронировать стол</button>
+        </div>
+        <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}margin-top:16px;">Закрыть</button>`;
+      xpAnimate();
       return;
     }
     renderStatusCards();
@@ -5165,8 +5278,9 @@ function qrPlateSvg(text) {
     }).join('');
 
     document.getElementById('bookingStatusContent').innerHTML =
-      `<div class="sec" style="margin:0 0 12px;text-align:left;">Ваши брони</div>${cardsHtml}
+      `${statusLevel}<div class="sec" style="margin:0 0 12px;text-align:left;">Ваши брони</div>${cardsHtml}
        <button onclick="closeBookingStatus()" style="${STATUS_BTN_STYLE}">Закрыть</button>`;
+    xpAnimate();
   }
 
   const lateInProgress = new Set();
