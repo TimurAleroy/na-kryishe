@@ -906,7 +906,7 @@
     .xp-spark.on { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { .xp-glow, .xp-fill, .xp-spark { transition: none; } }
 
-    /* Пустое окно: компактная композиция с архитектурным крестом за текстом и кнопкой */
+    /* Пустое состояние «Моих броней» */
     .st-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 52px; padding-bottom: 34px; }
     /* Компактное окно только для пустого состояния: другие карточки брони не меняем */
     #bookingStatusCard.is-empty { max-width: 300px !important; }
@@ -919,10 +919,6 @@
     .st-x { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 16px; line-height: 1; cursor: pointer; z-index: 2; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
     .st-x:active { background: rgba(255,255,255,0.24); }
     .st-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    /* Большой тихий крест-щель за содержимым окна «Мои брони» (когда брони есть или броней нет) */
-    .st-bg { display: none; position: absolute; z-index: 0; inset: 0; overflow: hidden; border-radius: 22px; opacity: 0.7; pointer-events: none; }
-    .st-bg i { position: absolute; display: block; }
-    #bookingStatusCard.has-bg .st-bg { display: block; }
 
     /* HISTORY */
     .history-summary {
@@ -1821,7 +1817,6 @@
 <div class="booking-overlay" id="bookingStatusOverlay" onclick="if(event.target===this) closeBookingStatus()">
   <div class="booking-overlay-card" style="max-width:340px;padding:0;position:relative;" id="bookingStatusCard">
     <button type="button" class="st-x" aria-label="Закрыть" onclick="closeBookingStatus()">✕</button>
-    <div class="st-bg" id="bookingStatusBg" aria-hidden="true"></div>
     <div id="bookingStatusScroll" style="position:relative;z-index:1;padding:56px 24px 32px;max-height:80vh;overflow-y:auto;overscroll-behavior:contain;border-radius:22px;">
       <div id="bookingStatusContent"></div>
     </div>
@@ -5153,22 +5148,6 @@ function qrPlateSvg(text) {
     box.innerHTML = xpRowHtml(pct);
     xpGrow(box.querySelector('.xp-wrap'), pct);
   }
-  // Крест-щель: контур щели между четырьмя панелями, по краям тёплый свет (неподвижный). Один крест на оба состояния «Моих броней»: когда броней нет и когда они есть; линии по 1 px, у большого креста шире щель и длиннее затухание
-  function crossBgHtml() {
-    const W = 187, H = 218, vx = 107, by = 70, g = 8, fv = 68, fh = 68, fb = 88;
-    const T = 'rgba(0,0,0,0)', ln = '#FFB36B', fl = 'rgba(255,179,107,0.13)';
-    const vt = (c) => `linear-gradient(180deg,${T} 0,${c} ${fv}px,${c} 100%)`;
-    const vb = (c) => `linear-gradient(180deg,${c} 0,${c} calc(100% - ${fb}px),${T} 100%)`;
-    const hl = (c) => `linear-gradient(90deg,${T} 0,${c} ${fh}px,${c} 100%)`;
-    const hr = (c) => `linear-gradient(90deg,${c} 0,${c} calc(100% - ${fh}px),${T} 100%)`;
-    const bh = H - by - g, rw = W - vx - g;
-    const i = (l, t, w, h, bg) => `<i style="left:${l}px;top:${t}px;width:${w}px;height:${h}px;background:${bg}"></i>`;
-    const fills = i(vx, 0, g, by, vt(fl)) + i(vx, by + g, g, bh, vb(fl)) + i(0, by, vx, g, hl(fl)) + i(vx + g, by, rw, g, hr(fl));
-    const lines = i(vx - 1, 0, 1, by, vt(ln)) + i(vx + g, 0, 1, by, vt(ln)) + i(0, by - 1, vx, 1, hl(ln)) + i(vx + g, by - 1, rw, 1, hr(ln))
-      + i(0, by + g, vx, 1, hl(ln)) + i(vx + g, by + g, rw, 1, hr(ln)) + i(vx - 1, by + g, 1, bh, vb(ln)) + i(vx + g, by + g, 1, bh, vb(ln));
-    return `<div style="position:absolute;left:50%;top:65px;margin-left:${-Math.round(W / 2)}px;width:${W}px;height:${H}px">${fills}<div style="position:absolute;left:0;top:0;width:${W}px;height:${H}px;filter:drop-shadow(0 0 2px rgba(255,179,107,0.75)) drop-shadow(0 0 18px rgba(255,179,107,0.32))">${lines}</div></div>`;
-  }
-
   const STATUS_MSG_STYLE = 'text-align:center;color:var(--text-muted);font-size:13px;line-height:1.5;';
   const STATUS_BTN_STYLE = "width:100%;margin-top:8px;background:none;border:1px solid var(--border);border-radius:100px;padding:11px 14px;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:var(--text-muted);cursor:pointer;font-family:'Inter',sans-serif;";
   let statusList = [];
@@ -5182,7 +5161,7 @@ function qrPlateSvg(text) {
     const overlay = document.getElementById('bookingStatusOverlay');
     overlay.classList.add('show');
     lateArmed = null;
-    document.getElementById('bookingStatusCard').classList.remove('has-bg', 'is-empty'); // компактный размер только для пустого состояния
+    document.getElementById('bookingStatusCard').classList.remove('is-empty'); // компактный размер только для пустого состояния
 
     if (!hasTelegramAuth()) {
       statusMessage('Статус брони виден в приложении внутри Telegram.<br>Подтверждение также придёт от администратора.');
@@ -5204,9 +5183,7 @@ function qrPlateSvg(text) {
     }
     statusList = me.active || [];
     if (!statusList.length) {
-      const bgBox0 = document.getElementById('bookingStatusBg');
-      if (bgBox0 && !bgBox0.firstChild) bgBox0.innerHTML = crossBgHtml();
-      document.getElementById('bookingStatusCard').classList.add('has-bg', 'is-empty');
+      document.getElementById('bookingStatusCard').classList.add('is-empty');
       document.getElementById('bookingStatusContent').innerHTML = `
         <div class="st-empty">
           <h2 class="st-empty-t">Броней пока нет</h2>
@@ -5260,9 +5237,7 @@ function qrPlateSvg(text) {
       `;
     }).join('');
 
-    const bgBox = document.getElementById('bookingStatusBg');
-    if (bgBox && !bgBox.firstChild) bgBox.innerHTML = crossBgHtml();
-    document.getElementById('bookingStatusCard').classList.add('has-bg');
+    document.getElementById('bookingStatusCard').classList.remove('is-empty');
     document.getElementById('bookingStatusContent').innerHTML =
       `<div class="sec" style="margin:0 0 12px;text-align:left;">Ваши брони</div>${cardsHtml}`;
   }
