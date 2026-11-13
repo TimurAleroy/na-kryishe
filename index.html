@@ -906,12 +906,9 @@
     .xp-spark.on { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { .xp-glow, .xp-fill, .xp-spark { transition: none; } }
 
-    .st-empty { display: flex; flex-direction: column; align-items: center; text-align: center; }
-    .st-cross { position: relative; width: 72px; height: 84px; --cl: #FFB36B; --cf: rgba(255,179,107,0.13); --cg: rgba(255,179,107,0.75); --cs: rgba(255,179,107,0.32); }
-    .st-cross > div { position: absolute; left: 0; top: 0; width: 72px; height: 84px; pointer-events: none; }
-    .st-cross i { position: absolute; display: block; }
-    .st-cross .lines { filter: drop-shadow(0 0 2px var(--cg)) drop-shadow(0 0 9px var(--cs)); }
-    .st-empty-t { margin: 24px 0 0; font-family: 'Jost', sans-serif; font-size: 24px; font-weight: 500; line-height: 1.2; color: var(--text); }
+    /* пустое окно: тот же большой крест-щель, что за карточками броней; текст начинается под ним (крест 218 px от 48 px: хвост линии гаснет до начала заголовка) */
+    .st-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 208px; }
+    .st-empty-t { margin: 0; font-family: 'Jost', sans-serif; font-size: 24px; font-weight: 500; line-height: 1.2; color: var(--text); }
     .st-empty-s { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
     .st-empty-btn { margin-top: 24px; min-height: 52px; padding: 0 32px; border-radius: 14px; border: 1px solid var(--accent); background: var(--accent); color: #100906; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; cursor: pointer; }
     .st-empty-btn:active { transform: scale(0.98); }
@@ -919,7 +916,7 @@
     .st-x { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 16px; line-height: 1; cursor: pointer; z-index: 2; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
     .st-x:active { background: rgba(255,255,255,0.24); }
     .st-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    /* Большой тихий крест-щель за карточками броней (виден только когда брони есть) */
+    /* Большой тихий крест-щель за содержимым окна «Мои брони» (когда брони есть или броней нет) */
     .st-bg { display: none; position: absolute; z-index: 0; inset: 0; overflow: hidden; border-radius: 22px; opacity: 0.7; pointer-events: none; }
     .st-bg i { position: absolute; display: block; }
     #bookingStatusCard.has-bg .st-bg { display: block; }
@@ -5153,24 +5150,7 @@ function qrPlateSvg(text) {
     box.innerHTML = xpRowHtml(pct);
     xpGrow(box.querySelector('.xp-wrap'), pct);
   }
-  // Крест тонкой линией: контур щели между четырьмя панелями, по краям тёплый свет (неподвижный)
-  const CROSS_THIN_HTML = `<div class="st-cross" aria-hidden="true"><div>
-      <i style="left:41px;top:0;width:6px;height:33px;background:linear-gradient(180deg,rgba(0,0,0,0) 0,var(--cf) 26px,var(--cf) 100%)"></i>
-      <i style="left:41px;top:33px;width:6px;height:51px;background:linear-gradient(180deg,var(--cf) 0,var(--cf) calc(100% - 34px),rgba(0,0,0,0) 100%)"></i>
-      <i style="left:0;top:27px;width:41px;height:6px;background:linear-gradient(90deg,rgba(0,0,0,0) 0,var(--cf) 26px,var(--cf) 100%)"></i>
-      <i style="left:47px;top:27px;width:25px;height:6px;background:linear-gradient(90deg,var(--cf) 0,var(--cf) calc(100% - 26px),rgba(0,0,0,0) 100%)"></i>
-      <div class="lines">
-        <i style="left:40px;top:0;width:1px;height:27px;background:linear-gradient(180deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
-        <i style="left:47px;top:0;width:1px;height:27px;background:linear-gradient(180deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
-        <i style="left:0;top:26px;width:41px;height:1px;background:linear-gradient(90deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
-        <i style="left:47px;top:26px;width:25px;height:1px;background:linear-gradient(90deg,var(--cl) 0,var(--cl) calc(100% - 26px),rgba(0,0,0,0) 100%)"></i>
-        <i style="left:0;top:33px;width:41px;height:1px;background:linear-gradient(90deg,rgba(0,0,0,0) 0,var(--cl) 26px,var(--cl) 100%)"></i>
-        <i style="left:47px;top:33px;width:25px;height:1px;background:linear-gradient(90deg,var(--cl) 0,var(--cl) calc(100% - 26px),rgba(0,0,0,0) 100%)"></i>
-        <i style="left:40px;top:33px;width:1px;height:51px;background:linear-gradient(180deg,var(--cl) 0,var(--cl) calc(100% - 34px),rgba(0,0,0,0) 100%)"></i>
-        <i style="left:47px;top:33px;width:1px;height:51px;background:linear-gradient(180deg,var(--cl) 0,var(--cl) calc(100% - 34px),rgba(0,0,0,0) 100%)"></i>
-      </div></div></div>`;
-
-  // Тот же крест-щель, но крупнее (линии остаются по 1 px, у большого креста шире щель и длиннее затухание): фон за карточками броней
+  // Крест-щель: контур щели между четырьмя панелями, по краям тёплый свет (неподвижный). Один крест на оба состояния «Моих броней»: когда броней нет и когда они есть; линии по 1 px, у большого креста шире щель и длиннее затухание
   function crossBgHtml() {
     const W = 187, H = 218, vx = 107, by = 70, g = 8, fv = 68, fh = 68, fb = 88;
     const T = 'rgba(0,0,0,0)', ln = '#FFB36B', fl = 'rgba(255,179,107,0.13)';
@@ -5199,7 +5179,7 @@ function qrPlateSvg(text) {
     const overlay = document.getElementById('bookingStatusOverlay');
     overlay.classList.add('show');
     lateArmed = null;
-    document.getElementById('bookingStatusCard').classList.remove('has-bg'); // крест-фон только когда брони есть
+    document.getElementById('bookingStatusCard').classList.remove('has-bg'); // крест-фон только когда брони есть или это пустой экран «Броней пока нет»
 
     if (!hasTelegramAuth()) {
       statusMessage('Статус брони виден в приложении внутри Telegram.<br>Подтверждение также придёт от администратора.');
@@ -5221,8 +5201,11 @@ function qrPlateSvg(text) {
     }
     statusList = me.active || [];
     if (!statusList.length) {
+      const bgBox0 = document.getElementById('bookingStatusBg');
+      if (bgBox0 && !bgBox0.firstChild) bgBox0.innerHTML = crossBgHtml();
+      document.getElementById('bookingStatusCard').classList.add('has-bg');
       document.getElementById('bookingStatusContent').innerHTML = `
-        <div class="st-empty">${CROSS_THIN_HTML}
+        <div class="st-empty">
           <h2 class="st-empty-t">Броней пока нет</h2>
           <p class="st-empty-s">Выберите стол, и он будет ждать вас.</p>
           <button type="button" class="st-empty-btn" onclick="closeBookingStatus();resetAndShowBook()">Забронировать стол</button>
