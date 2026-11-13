@@ -906,8 +906,11 @@
     .xp-spark.on { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { .xp-glow, .xp-fill, .xp-spark { transition: none; } }
 
-    /* пустое окно: тот же большой крест-щель, что за карточками броней; текст начинается под ним (крест 218 px от 48 px: хвост линии гаснет до начала заголовка) */
-    .st-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 112px; padding-bottom: 72px; }
+    /* Пустое окно: компактная композиция с архитектурным крестом за текстом и кнопкой */
+    .st-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 52px; padding-bottom: 34px; }
+    /* Компактное окно только для пустого состояния: другие карточки брони не меняем */
+    #bookingStatusCard.is-empty { max-width: 300px !important; }
+    #bookingStatusCard.is-empty #bookingStatusScroll { padding: 44px 18px 26px !important; }
     .st-empty-t { margin: 0; font-family: 'Jost', sans-serif; font-size: 24px; font-weight: 500; line-height: 1.2; color: var(--text); }
     .st-empty-s { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
     .st-empty-btn { margin-top: 24px; min-height: 52px; padding: 0 32px; border-radius: 14px; border: 1px solid var(--accent); background: var(--accent); color: #100906; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; cursor: pointer; }
@@ -5163,7 +5166,7 @@ function qrPlateSvg(text) {
     const fills = i(vx, 0, g, by, vt(fl)) + i(vx, by + g, g, bh, vb(fl)) + i(0, by, vx, g, hl(fl)) + i(vx + g, by, rw, g, hr(fl));
     const lines = i(vx - 1, 0, 1, by, vt(ln)) + i(vx + g, 0, 1, by, vt(ln)) + i(0, by - 1, vx, 1, hl(ln)) + i(vx + g, by - 1, rw, 1, hr(ln))
       + i(0, by + g, vx, 1, hl(ln)) + i(vx + g, by + g, rw, 1, hr(ln)) + i(vx - 1, by + g, 1, bh, vb(ln)) + i(vx + g, by + g, 1, bh, vb(ln));
-    return `<div style="position:absolute;left:50%;top:136px;margin-left:${-Math.round(W / 2)}px;width:${W}px;height:${H}px">${fills}<div style="position:absolute;left:0;top:0;width:${W}px;height:${H}px;filter:drop-shadow(0 0 2px rgba(255,179,107,0.75)) drop-shadow(0 0 18px rgba(255,179,107,0.32))">${lines}</div></div>`;
+    return `<div style="position:absolute;left:50%;top:65px;margin-left:${-Math.round(W / 2)}px;width:${W}px;height:${H}px">${fills}<div style="position:absolute;left:0;top:0;width:${W}px;height:${H}px;filter:drop-shadow(0 0 2px rgba(255,179,107,0.75)) drop-shadow(0 0 18px rgba(255,179,107,0.32))">${lines}</div></div>`;
   }
 
   const STATUS_MSG_STYLE = 'text-align:center;color:var(--text-muted);font-size:13px;line-height:1.5;';
@@ -5179,7 +5182,7 @@ function qrPlateSvg(text) {
     const overlay = document.getElementById('bookingStatusOverlay');
     overlay.classList.add('show');
     lateArmed = null;
-    document.getElementById('bookingStatusCard').classList.remove('has-bg'); // крест-фон только когда брони есть или это пустой экран «Броней пока нет»
+    document.getElementById('bookingStatusCard').classList.remove('has-bg', 'is-empty'); // компактный размер только для пустого состояния
 
     if (!hasTelegramAuth()) {
       statusMessage('Статус брони виден в приложении внутри Telegram.<br>Подтверждение также придёт от администратора.');
@@ -5203,7 +5206,7 @@ function qrPlateSvg(text) {
     if (!statusList.length) {
       const bgBox0 = document.getElementById('bookingStatusBg');
       if (bgBox0 && !bgBox0.firstChild) bgBox0.innerHTML = crossBgHtml();
-      document.getElementById('bookingStatusCard').classList.add('has-bg');
+      document.getElementById('bookingStatusCard').classList.add('has-bg', 'is-empty');
       document.getElementById('bookingStatusContent').innerHTML = `
         <div class="st-empty">
           <h2 class="st-empty-t">Броней пока нет</h2>
